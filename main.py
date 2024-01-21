@@ -1,12 +1,22 @@
 import googlemaps
 import pandas as pd
+from geopy.distance import geodesic
 
-# ... (Previous code)
+# Set your Google Maps API key
+API_KEY = 'your_api_key'
+gmaps = googlemaps.Client(key=API_KEY)
+
+def calculate_distance(origin, destination):
+    return geodesic(origin, destination).km
+
+def calculate_energy_consumption(distance):
+    # Your energy consumption calculation logic goes here
+    # This could involve the specific characteristics of your electric vehicle
+    # For simplicity, let's assume a constant energy consumption rate for now
+    energy_consumption_rate = 0.2  # kWh per km
+    return distance * energy_consumption_rate
 
 def main():
-    API_KEY = 'your_api_key'
-    gmaps = googlemaps.Client(key=API_KEY)
-
     destinations = [
         "Auckland, New Zealand",
         "Destination 1, Auckland",
