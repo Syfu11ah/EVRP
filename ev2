@@ -20,7 +20,7 @@ gravitational_acceleration = 9.81  # Gravitational acceleration in m/s^2
 rolling_resistance_coefficient = 0.01  # Rolling resistance coefficient
 drag_coefficient = 0.3  # Drag coefficient
 frontal_area = 2.0  # Frontal area of the vehicle in m^2
-average_speed = 20.0  # Average speed of the vehicle in m/s (for duration calculation)
+average_speed = 20.0  # Average speed of the vehicle in m/s (for energy consumption calculation)
 
 # Battery specifications
 battery_capacity = 60.0  # Replace with the actual capacity of the battery in kilowatt-hours
@@ -84,7 +84,8 @@ def get_detailed_route(start_point, end_point):
     directions_result = gmaps.directions(
         start_point, end_point,
         mode="driving",
-        departure_time="now"
+        departure_time="now",
+        traffic_model="best_guess"
     )
     return directions_result
 
@@ -113,9 +114,13 @@ for i in range(len(waypoints) - 1):
         # Estimate road gradient_angle based on the difference in elevation
         gradient_angle = math.degrees(math.atan2(end_elevation - start_elevation, distance))
 
-        # Calculate duration and velocity based on the distance
-        duration = distance / average_speed  # Assuming constant speed for simplicity
-        velocity = average_speed
+        # Get realistic traveling time based on current traffic conditions
+        detailed_route = get_detailed_route(start_point, end_point)
+        duration_in_traffic = detailed_route[0]['legs'][0]['duration_in_traffic']['value']
+        duration = duration_in_traffic / 60.0  # Convert duration to minutes
+
+        # Calculate velocity based on the realistic traveling time
+        velocity = distance / (duration * 60)  # Convert duration to hours
 
         # Assume constant acceleration for simplicity (you may need a more sophisticated model)
         acceleration = 2.0  # m/s^2
@@ -136,14 +141,13 @@ for i in range(len(waypoints) - 1):
         print(f'Origin: {start_point}')
         print(f'Destination: {end_point}')
         print(f'Distance: {distance:.2f} kilometers')  # Distance is now directly calculated
-        print(f'Traveling time: {duration:.2f} minutes')
+        print(f'Realistic Traveling Time: {duration:.2f} minutes')
         print(f'Energy consumption: {energy_consumption:.2f} watt-hours')
         print(f'Battery SoC: {ev.soc:.2f}%')
         print(f'Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
         print(f'Remaining Battery Capacity: {remaining_battery_capacity:.2f} kWh\n')
 
         # Get and print detailed route information
-        detailed_route = get_detailed_route(start_point, end_point)
         print(f'Detailed Route Instructions:')
         for leg in detailed_route[0]['legs']:
             for step in leg['steps']:
