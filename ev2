@@ -74,6 +74,15 @@ def get_elevation(location):
     else:
         return None
 
+# Function to get detailed route information between two points
+def get_detailed_route(start_point, end_point):
+    directions_result = gmaps.directions(
+        start_point, end_point,
+        mode="driving",
+        departure_time="now"
+    )
+    return directions_result
+
 # Initialize the electric vehicle
 ev = ElectricVehicle(battery_capacity, initial_soc)
 
@@ -127,6 +136,14 @@ for i in range(len(waypoints) - 1):
         print(f'Battery SoC: {ev.soc:.2f}%')
         print(f'Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
         print(f'Remaining Battery Capacity: {remaining_battery_capacity:.2f} kWh\n')
+
+        # Get and print detailed route information
+        detailed_route = get_detailed_route(start_point, end_point)
+        print(f'Detailed Route Instructions:')
+        for leg in detailed_route[0]['legs']:
+            for step in leg['steps']:
+                print(step['html_instructions'])
+        print('\n')
 
         # Introduce a delay of 2 minutes after each trip
         time.sleep(120)
