@@ -1,123 +1,49 @@
 import googlemaps
-import time
-import math
 
 # Replace 'YOUR_API_KEY' with your actual Google Maps API key
-api_key = 'YOUR_API_KEY'
-gmaps = googlemaps.Client(key=api_key)
+API_KEY = 'YOUR_API_KEY'
+gmaps = googlemaps.Client(key=API_KEY)
 
-# Coordinates of the waypoints
-waypoints = [
-    (-36.8536098, 174.7664805),
-    (-37.0089331, 174.7838064),
-    (-36.9409461, 174.9039851),
-    (-36.849963, 174.7560774),
-    (-36.6896228, 174.7517096),
-]
+# Coordinates of the locations
+current_location = (-37.0089331, 174.7838064)
+destination_location = (-36.8707883, 174.7701537)
+waypoints = [(-36.9409461, 174.9039851),
+             (-36.849963, 174.7560774),
+             (-36.6896228, 174.7517096)]
 
-# Constants for energy consumption estimation
-energy_consumption_rate = 0.2  # Adjust this value based on your vehicle's efficiency (kWh per km)
-initial_battery_capacity = 100.0  # Initial battery capacity in kWh
-min_battery_capacity = 20.0  # Minimum battery capacity at which the vehicle will stop in percentage
+# Combine the current location, waypoints, and destination
+locations = [current_location] + waypoints + [destination_location]
 
-def get_directions(origin, destination):
-    result = gmaps.directions(
-        origin,
-        destination,
-        mode="driving",
-        departure_time="now"
-    )
-    return result[0]['legs'][0]['steps']
+# Assuming a constant energy consumption rate (in Wh/km)
+energy_consumption_rate = 200  # Adjust this value based on your vehicle's efficiency
 
-def estimate_energy_consumption(steps, start_index=0, start_step_index=0):
-    total_energy_consumed = 0.0
+total_distance = 0
+total_energy_consumption = 0
+total_duration_seconds = 0
+last_location = None  # To store the last location for continuing the route
 
-    for i in range(start_index, len(steps)):
-        step = steps[i]
-        for j in range(start_step_index, len(step['polyline']['points']) - 1):
-            lat1, lng1 = googlemaps.convert.decode_polyline(step['polyline']['points'][j])
-            lat2, lng2 = googlemaps.convert.decode_polyline(step['polyline']['points'][j + 1])
+# Calculate energy consumption and duration
+for i, step in enumerate(result[0]['legs'][0]['steps']):
+    if i == 0 and last_location is not None:
+        # If continuing from the last location, set the origin accordingly
+        step['start_location'] = {'lat': last_location[0], 'lng': last_location[1]}
 
-            # Calculate distance between two points using Haversine formula
-            distance = haversine(lat1, lng1, lat2, lng2)
+    distance = step['distance']['value'] / 1000  # Convert distance from meters to kilometers
+    duration_seconds = step['duration']['value']
+    total_distance += distance
+    total_duration_seconds += duration_seconds
 
-            # Estimate energy consumption
-            energy_consumed = distance * energy_consumption_rate
-            total_energy_consumed += energy_consumed
+    energy_consumption = distance * energy_consumption_rate
+    total_energy_consumption += energy_consumption
 
-    return total_energy_consumed
+    # Save the end location for continuing the route
+    last_location = (step['end_location']['lat'], step['end_location']['lng'])
 
-def simulate_vehicle_movement(steps, battery_capacity, start_index=0, start_step_index=0):
-    total_energy_consumed = 0.0
+    print(f"{step['html_instructions']}, Distance: {distance:.2f} km, Energy Consumption: {energy_consumption:.2f} Wh, Duration: {duration_seconds // 60} min {duration_seconds % 60} sec")
 
-    for i in range(start_index, len(steps)):
-        step = steps[i]
-        for j in range(start_step_index, len(step['polyline']['points']) - 1):
-            lat1, lng1 = googlemaps.convert.decode_polyline(step['polyline']['points'][j])
-            lat2, lng2 = googlemaps.convert.decode_polyline(step['polyline']['points'][j + 1])
-
-            # Calculate distance between two points using Haversine formula
-            distance = haversine(lat1, lng1, lat2, lng2)
-
-            # Estimate energy consumption
-            energy_consumed = distance * energy_consumption_rate
-            total_energy_consumed += energy_consumed
-
-            # Update battery capacity
-            battery_capacity -= energy_consumed
-
-            print(f"Simulating movement to: ({lat2}, {lng2}), Energy Consumed: {energy_consumed:.2f} kWh, "
-                  f"Battery Capacity: {battery_capacity:.2f} kWh")
-
-            time.sleep(1)  # Simulating 1-second delay between each step
-
-            # Check if the battery capacity is below the minimum threshold
-            if battery_capacity < min_battery_capacity:
-                print("Battery capacity below 20%. Stopping simulation.")
-                return total_energy_consumed, len(steps) - 1, len(step['polyline']['points']) - 1
-
-        # Update start_step_index to 0 for the next step
-        start_step_index = 0
-
-    return total_energy_consumed, len(steps) - 1, len(step['polyline']['points']) - 1
-
-def haversine(lat1, lon1, lat2, lon2):
-    # Haversine formula to calculate distance between two points on Earth
-    R = 6371.0  # Radius of the Earth in kilometers
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    distance = R * c
-    return distance
-
-if __name__ == "__main__":
-    # Initialize start indices
-    start_waypoint_index = 0
-    start_step_index = 0
-
-    # Initialize battery capacity
-    current_battery_capacity = initial_battery_capacity
-
-    # Loop through waypoints
-    while start_waypoint_index < len(waypoints) - 1:
-        origin = waypoints[start_waypoint_index]
-        destination = waypoints[start_waypoint_index + 1]
-
-        print(f"Getting directions from {origin} to {destination}")
-        steps = get_directions(origin, destination)
-
-        # Simulate movement from the last stopped location
-        total_energy_consumed, start_waypoint_index, start_step_index = simulate_vehicle_movement(
-            steps,
-            current_battery_capacity,
-            start_waypoint_index,
-            start_step_index
-        )
-
-        print(f"Total energy consumed: {total_energy_consumed:.2f} kWh")
-
-        # Move to the next waypoint
-        start_waypoint_index += 1
-
-    print("Vehicle has reached the final destination.")
+# Print the total energy consumption and total duration for the entire route
+print(f"\nCurrent Location: {current_location}")
+print(f"Destination: {destination_location}")
+print(f"Total Distance: {total_distance:.2f} km")
+print(f"Total Energy Consumption: {total_energy_consumption:.2f} Wh")
+print(f"Total Duration: {total_duration_seconds // 60} min {total_duration_seconds % 60} sec")
