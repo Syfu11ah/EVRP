@@ -25,6 +25,7 @@ average_speed = 20.0  # Average speed of the vehicle in m/s (for energy consumpt
 # Battery specifications
 battery_capacity = 60.0  # Replace with the actual capacity of the battery in kilowatt-hours
 initial_soc = 80.0  # Replace with the actual initial state of charge in percentage
+min_soc = 20.0  # Minimum state of charge to stop the vehicle in percentage
 
 class ElectricVehicle:
     def __init__(self, battery_capacity, initial_soc):
@@ -189,6 +190,11 @@ for i in range(len(waypoints) - 1):
 
         # Introduce a delay of 2 minutes after each trip
         time.sleep(120)
+        
+        # Check if battery level is below the minimum allowed
+        if ev.soc <= min_soc:
+            print(f'Battery level is below {min_soc}%. Stopping the vehicle.\n')
+            break
     else:
         print(f'Error obtaining elevation data for trip {i + 1}. Skipping...\n')
 
