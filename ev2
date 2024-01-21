@@ -39,9 +39,20 @@ class ElectricVehicle:
              0.5 * drag_coefficient * frontal_area * 1.225 * velocity**2) * distance
         ) / 3600  # Convert energy from J to Wh
 
+        # Limit energy consumption to remaining battery capacity
+        energy_consumption = min(energy_consumption, self.soc * self.battery_capacity / 100.0)
+
         self.soc -= (energy_consumption / self.battery_capacity) * 100.0
         self.soc = max(0.0, self.soc)  # Ensure the state of charge is not below 0
         return energy_consumption
+
+def get_elevation(location):
+    # Get elevation data for a specific location
+    result = gmaps.elevation([location])
+    if result and 'elevation' in result[0]:
+        return result[0]['elevation']
+    else:
+        return None
 
 # Initialize the electric vehicle
 ev = ElectricVehicle(battery_capacity, initial_soc)
@@ -56,40 +67,49 @@ for i in range(len(waypoints) - 1):
     start_point = current_location
     end_point = waypoints[i + 1]
 
-    # Calculate distance, duration, and velocity between two points
-    result = gmaps.distance_matrix(start_point, end_point, mode="driving")
-    distance = result['rows'][0]['elements'][0]['distance']['value']
-    duration = result['rows'][0]['elements'][0]['duration']['value']
-    velocity = (distance / duration) if duration > 0 else 0.0
+    # Get the elevation at the start and end points
+    start_elevation = get_elevation(start_point)
+    end_elevation = get_elevation(end_point)
 
-    # Assume constant acceleration for simplicity (you may need a more sophisticated model)
-    acceleration = 2.0  # m/s^2
-    gradient_angle = 0.0  # Assume no gradient for simplicity
+    if start_elevation is not None and end_elevation is not None:
+        # Estimate road gradient_angle based on the difference in elevation
+        gradient_angle = math.degrees(math.atan2(end_elevation - start_elevation, distance))
 
-    # Drive the electric vehicle and get energy consumption
-    energy_consumption = ev.drive(distance / 1000.0, acceleration, gradient_angle, velocity)
+        # Calculate distance, duration, and velocity between two points
+        result = gmaps.distance_matrix(start_point, end_point, mode="driving")
+        distance = result['rows'][0]['elements'][0]['distance']['value']
+        duration = result['rows'][0]['elements'][0]['duration']['value']
+        velocity = (distance / duration) if duration > 0 else 0.0
 
-    # Update total distance, total duration, and current location for the next iteration
-    total_distance += distance
-    total_duration += duration
-    current_location = end_point
+        # Assume constant acceleration for simplicity (you may need a more sophisticated model)
+        acceleration = 2.0  # m/s^2
 
-    # Calculate remaining battery capacity
-    remaining_battery_capacity = ev.battery_capacity - (energy_consumption / 1000.0)  # Convert energy consumption to kilowatt-hours
+        # Drive the electric vehicle and get energy consumption
+        energy_consumption = ev.drive(distance / 1000.0, acceleration, gradient_angle, velocity)
 
-    # Print results for the current trip
-    print(f'Trip {i + 1}:')
-    print(f'Origin: {start_point}')
-    print(f'Destination: {end_point}')
-    print(f'Distance: {distance / 1000.0:.2f} kilometers')
-    print(f'Traveling time: {duration / 60:.2f} minutes')
-    print(f'Energy consumption: {energy_consumption:.2f} watt-hours')
-    print(f'Battery SoC: {ev.soc:.2f}%')
-    print(f'Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
-    print(f'Remaining Battery Capacity: {remaining_battery_capacity:.2f} kWh\n')
+        # Update total distance, total duration, and current location for the next iteration
+        total_distance += distance
+        total_duration += duration
+        current_location = end_point
 
-    # Introduce a delay of 2 minutes after each trip
-    time.sleep(120)
+        # Calculate remaining battery capacity
+        remaining_battery_capacity = ev.battery_capacity - (energy_consumption / 1000.0)  # Convert energy consumption to kilowatt-hours
+
+        # Print results for the current trip
+        print(f'Trip {i + 1}:')
+        print(f'Origin: {start_point}')
+        print(f'Destination: {end_point}')
+        print(f'Distance: {distance / 1000.0:.2f} kilometers')
+        print(f'Traveling time: {duration / 60:.2f} minutes')
+        print(f'Energy consumption: {energy_consumption:.2f} watt-hours')
+        print(f'Battery SoC: {ev.soc:.2f}%')
+        print(f'Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
+        print(f'Remaining Battery Capacity: {remaining_battery_capacity:.2f} kWh\n')
+
+        # Introduce a delay of 2 minutes after each trip
+        time.sleep(120)
+    else:
+        print(f'Error obtaining elevation data for trip {i + 1}. Skipping...\n')
 
 # Convert total distance to kilometers
 total_distance_km = total_distance / 1000.0
