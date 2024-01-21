@@ -142,7 +142,10 @@ for i in range(len(waypoints) - 1):
         print(f'Detailed Route Instructions:')
         for leg in detailed_route[0]['legs']:
             for step in leg['steps']:
-                print(step['html_instructions'])
+                print(f"Instruction: {step['html_instructions']}")
+                print(f"Start Location: {step['start_location']}")
+                print(f"End Location: {step['end_location']}")
+                print('---')
         print('\n')
 
         # Introduce a delay of 2 minutes after each trip
