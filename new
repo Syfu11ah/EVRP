@@ -1,130 +1,67 @@
-import googlemaps
-from datetime import datetime
-import random
-import math
+import requests
 
-class ElectricVehicleBattery:
-    def __init__(self, capacity_kwh):
-        self.capacity_kwh = capacity_kwh
-        self.current_level = capacity_kwh
+def get_directions(api_key, waypoints):
+    origin = waypoints[0]
+    destination = waypoints[-1]
+    waypoints_str = "|".join([f"{lat},{lng}" for lat, lng in waypoints[1:-1]])
 
-    def update_battery_level(self, energy_consumption_kwh):
-        self.current_level -= energy_consumption_kwh
-        if self.current_level < 0:
-            self.current_level = 0
+    endpoint = "https://maps.googleapis.com/maps/api/directions/json"
+    params = {
+        "origin": f"{origin[0]},{origin[1]}",
+        "destination": f"{destination[0]},{destination[1]}",
+        "waypoints": f"via:{waypoints_str}",
+        "key": api_key,
+    }
 
-    def is_battery_below_threshold(self, threshold_percentage):
-        return (self.current_level / self.capacity_kwh) * 100 < threshold_percentage
+    response = requests.get(endpoint, params=params)
+    data = response.json()
 
-class ElectricVehicle:
-    def __init__(self, efficiency_kwh_per_km, battery_capacity_kwh, vehicle_mass_kg,
-                 mass_factor, acceleration_m_s2, rolling_resistance_coefficient,
-                 air_density_kg_per_m3, front_area_m2, drag_coefficient, wind_speed_m_s,
-                 road_angle_deg):
-        self.efficiency_kwh_per_km = efficiency_kwh_per_km
-        self.battery = ElectricVehicleBattery(battery_capacity_kwh)
+    if data["status"] == "OK":
+        return data["routes"][0]["legs"]
+    else:
+        print(f"Error: {data['status']}")
+        return None
 
-        # Additional parameters for energy consumption calculation
-        self.vehicle_mass_kg = vehicle_mass_kg
-        self.mass_factor = mass_factor
-        self.acceleration_m_s2 = acceleration_m_s2
-        self.rolling_resistance_coefficient = rolling_resistance_coefficient
-        self.air_density_kg_per_m3 = air_density_kg_per_m3
-        self.front_area_m2 = front_area_m2
-        self.drag_coefficient = drag_coefficient
-        self.wind_speed_m_s = wind_speed_m_s
-        self.road_angle_deg = road_angle_deg
-
-    def calculate_energy_consumption(self, distance_km):
-        # Calculate energy consumption based on various factors
-        gravitational_force = 9.81  # m/s^2
-        inclination_force = gravitational_force * math.sin(math.radians(self.road_angle_deg))
-        rolling_resistance_force = self.rolling_resistance_coefficient * self.vehicle_mass_kg * gravitational_force
-        air_density_force = 0.5 * self.air_density_kg_per_m3 * self.front_area_m2 * self.drag_coefficient * (
-                    self.wind_speed_m_s ** 2)
-
-        total_force = (self.vehicle_mass_kg + self.mass_factor) * self.acceleration_m_s2 + inclination_force + rolling_resistance_force + air_density_force
-
-        # Convert force to work (energy) and then to energy consumption
-        work_done = total_force * distance_km * 1000  # Convert distance to meters
-        energy_consumption_kwh = work_done / 3600 / 1000  # Convert work to kWh
-
-        return energy_consumption_kwh
-
-    def drive_to_destination(self, origin, destination):
-        # Get directions from the origin to the destination
-        directions_result = gmaps.directions(origin, destination, mode="driving", departure_time=datetime.now())
-
-        # Extract distance and duration from the directions result
-        distance_km = directions_result[0]['legs'][0]['distance']['value'] / 1000.0
-        duration_seconds = directions_result[0]['legs'][0]['duration']['value']
-
-        # Calculate energy consumption for the trip
-        energy_consumption = self.calculate_energy_consumption(distance_km)
-
-        # Update the battery level
-        self.battery.update_battery_level(energy_consumption)
-
-        return {
-            "distance": distance_km,
-            "duration": duration_seconds,
-            "energy_consumption": energy_consumption,
-            "battery_level": self.battery.current_level
-        }
-
-# Replace 'YOUR_API_KEY' with your actual API key
-API_KEY = 'YOUR_API_KEY'
-gmaps = googlemaps.Client(key=API_KEY)
+def calculate_energy_consumption(distance, efficiency):
+    # Assuming a constant energy consumption rate (kWh/km)
+    energy_consumed = distance * efficiency
+    return energy_consumed
 
 def main():
-    # Auckland city coordinates (you can adjust these coordinates)
-    auckland_coordinates = (-36.8485, 174.7633)
+    api_key = "YOUR_GOOGLE_MAPS_API_KEY"
+    waypoints = [
+        (-36.8536098, 174.7664805),
+        (-37.0089331, 174.7838064),
+        (-36.9409461, 174.9039851),
+        (-36.849963, 174.7560774),
+    ]
 
-    # Define parameters for the electric vehicle
-    efficiency_kwh_per_km = 0.2  # Adjust this based on the vehicle's specifications
-    battery_capacity_kwh = 100.0  # Adjust this based on the vehicle's battery capacity
+    efficiency = 0.2  # Adjust as needed
+    battery_level = 100.0  # Starting battery level
 
-    # Additional parameters for energy consumption calculation
-    vehicle_mass_kg = 1500.0
-    mass_factor = 100.0
-    acceleration_m_s2 = 2.0
-    rolling_resistance_coefficient = 0.01
-    air_density_kg_per_m3 = 1.225
-    front_area_m2 = 2.0
-    drag_coefficient = 0.3
-    wind_speed_m_s = 0.0  # No wind for simplicity
-    road_angle_deg = 0.0  # Flat road for simplicity
+    while battery_level > 20.0:
+        directions = get_directions(api_key, waypoints)
 
-    # Initialize the electric vehicle
-    ev = ElectricVehicle(efficiency_kwh_per_km, battery_capacity_kwh,
-                         vehicle_mass_kg, mass_factor, acceleration_m_s2,
-                         rolling_resistance_coefficient, air_density_kg_per_m3,
-                         front_area_m2, drag_coefficient, wind_speed_m_s,
-                         road_angle_deg)
+        if directions:
+            total_distance = sum(leg["distance"]["value"] for leg in directions)
+            print(f"Total Distance: {total_distance / 1000} km")
 
-    # Initialize the starting point as Auckland coordinates
-    current_location = auckland_coordinates
+            # Retrieve travel duration
+            total_duration = sum(leg["duration"]["value"] for leg in directions)
+            print(f"Total Duration: {total_duration / 60} minutes")
 
-    # Continue driving until the battery drops below 20%
-    while not ev.battery.is_battery_below_threshold(20):
-        # Generate random destination coordinates within Auckland city
-        dest_latitude = current_location[0] + random.uniform(-0.1, 0.1)
-        dest_longitude = current_location[1] + random.uniform(-0.1, 0.1)
+            energy_consumed = calculate_energy_consumption(total_distance / 1000, efficiency)
+            print(f"Energy Consumption: {energy_consumed} kWh")
 
-        destination = (dest_latitude, dest_longitude)
+            # Assuming the battery capacity is 60 kWh (adjust as needed)
+            battery_capacity = 60.0
+            battery_level -= (energy_consumed / battery_capacity) * 100.0
+            print(f"Battery Level: {battery_level}%")
 
-        # Drive to the destination
-        trip_info = ev.drive_to_destination(current_location, destination)
-
-        print(f"Start Location: {current_location}")
-        print(f"Destination: {destination}")
-        print(f"Distance: {trip_info['distance']:.2f} km")
-        print(f"Duration: {trip_info['duration'] // 60} minutes")
-        print(f"Energy Consumption: {trip_info['energy_consumption']:.2f} kWh")
-        print(f"Battery Level: {trip_info['battery_level']:.2f} kWh\n")
-
-        # Update the current location for the next iteration
-        current_location = destination
+            # Update the starting point for the next route
+            waypoints[0] = (directions[-1]["end_location"]["lat"], directions[-1]["end_location"]["lng"])
+        else:
+            break
 
 if __name__ == "__main__":
     main()
