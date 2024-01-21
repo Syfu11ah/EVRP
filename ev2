@@ -67,7 +67,26 @@ for i in range(len(waypoints) - 1):
     start_point = current_location
     end_point = waypoints[i + 1]
 
-    # Get the elevation at the start and end points
+def get_distance(point1, point2):
+    # Haversine formula to calculate distance between two points on the Earth
+    lat1, lon1 = math.radians(point1[0]), math.radians(point1[1])
+    lat2, lon2 = math.radians(point2[0]), math.radians(point2[1])
+
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    # Radius of the Earth in kilometers (mean value)
+    radius_earth = 6371.0
+
+    # Calculate the distance
+    distance = radius_earth * c
+
+    return distance
+
+# Get the elevation at the start and end points
     start_elevation = get_elevation(start_point)
     end_elevation = get_elevation(end_point)
 
