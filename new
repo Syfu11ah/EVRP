@@ -25,12 +25,15 @@ def main():
     # Number of random destinations to visit
     num_destinations = 5
 
+    # Initialize last destination as the starting point
+    last_destination_coords = auckland_coords
+
     for _ in range(num_destinations):
         destination_coords = get_random_location()
 
-        # Get directions from current location to the destination
+        # Get directions from the last destination to the new destination
         directions_result = gmaps.directions(
-            origin=auckland_coords,
+            origin=last_destination_coords,
             destination=destination_coords,
             mode="driving",
             avoid="ferries",
@@ -44,9 +47,13 @@ def main():
         energy_consumption = calculate_energy_consumption(distance_km)
 
         # Print results
+        print(f"Start: {last_destination_coords}")
         print(f"Destination: {destination_coords}")
         print(f"Distance: {distance_km:.2f} km")
         print(f"Energy Consumption: {energy_consumption:.2f} kWh\n")
+
+        # Update last destination for the next iteration
+        last_destination_coords = destination_coords
 
 if __name__ == "__main__":
     main()
