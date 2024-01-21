@@ -1,65 +1,67 @@
 import googlemaps
-from random import randint
+from datetime import datetime
+import random
 
-# Replace 'YOUR_API_KEY' with your actual Google Maps API key
-api_key = 'YOUR_API_KEY'
-gmaps = googlemaps.Client(key=api_key)
-
-def calculate_energy_consumption(distance_km):
-    # This is a simple placeholder function; you may replace it with a more accurate model
-    # based on your electric vehicle's energy consumption characteristics
-    energy_consumption_per_km = 0.2  # kWh per km (example value)
-    return distance_km * energy_consumption_per_km
+# Replace 'YOUR_API_KEY' with your actual API key
+API_KEY = 'YOUR_API_KEY'
+gmaps = googlemaps.Client(key=API_KEY)
 
 def get_directions(origin, destination):
-    # Get directions from the specified origin to destination
-    directions_result = gmaps.directions(
-        origin=origin,
-        destination=destination,
-        mode="driving",
-        avoid="ferries",
-        region="nz"
-    )
+    # Get directions from the origin to the destination
+    directions_result = gmaps.directions(origin, destination, mode="driving", departure_time=datetime.now())
     return directions_result
 
+def calculate_energy_consumption(distance_km, efficiency_kwh_per_km):
+    # Calculate energy consumption based on distance and vehicle efficiency
+    energy_consumption_kwh = distance_km * efficiency_kwh_per_km
+    return energy_consumption_kwh
+
 def main():
-    # User-defined starting location
-    starting_coords = (-36.8485, 174.7633)  # Auckland city coordinates
+    # Auckland city coordinates (you can adjust these coordinates)
+    auckland_coordinates = (-36.8485, 174.7633)
 
-    # Initial battery level (in percentage)
-    battery_level = 100.0
+    # Define the electric vehicle's efficiency (kWh per km)
+    efficiency_kwh_per_km = 0.2  # Adjust this based on the vehicle's specifications
 
-    # Keep traveling until the battery reaches 20%
-    while battery_level > 20.0:
-        # Generate a random destination within Auckland city bounds
-        destination_coords = (
-            starting_coords[0] + 0.05 * (randint(0, 100) / 100.0),
-            starting_coords[1] + 0.05 * (randint(0, 100) / 100.0)
-        )
+    # Battery capacity in kWh
+    battery_capacity_kwh = 100.0  # Adjust this based on the vehicle's battery capacity
 
-        # Get directions from the starting location to the random destination
-        directions_result = get_directions(starting_coords, destination_coords)
+    # Initialize the starting point as Auckland coordinates
+    current_location = auckland_coordinates
 
-        # Extract distance from the directions result
+    # Initialize the initial battery level to 100%
+    current_battery_level = battery_capacity_kwh
+
+    # Continue driving until the battery drops below 20%
+    while current_battery_level > 20:
+        # Generate random destination coordinates within Auckland city
+        dest_latitude = current_location[0] + random.uniform(-0.1, 0.1)
+        dest_longitude = current_location[1] + random.uniform(-0.1, 0.1)
+
+        destination = (dest_latitude, dest_longitude)
+
+        # Get directions from the current location to the destination
+        directions_result = get_directions(current_location, destination)
+
+        # Extract distance and duration from the directions result
         distance_km = directions_result[0]['legs'][0]['distance']['value'] / 1000.0
+        duration_seconds = directions_result[0]['legs'][0]['duration']['value']
 
-        # Calculate energy consumption based on the distance
-        energy_consumption = calculate_energy_consumption(distance_km)
+        # Calculate energy consumption for the trip
+        energy_consumption = calculate_energy_consumption(distance_km, efficiency_kwh_per_km)
 
-        # Update battery level
-        battery_level -= energy_consumption
+        # Update the battery level
+        current_battery_level -= energy_consumption
 
-        # Print results
-        print(f"Start: {starting_coords}")
-        print(f"Destination: {destination_coords}")
+        print(f"Start Location: {current_location}")
+        print(f"Destination: {destination}")
         print(f"Distance: {distance_km:.2f} km")
+        print(f"Duration: {duration_seconds // 60} minutes")
         print(f"Energy Consumption: {energy_consumption:.2f} kWh")
-        print(f"Battery Level: {battery_level:.2f}%\n")
+        print(f"Battery Level: {current_battery_level:.2f} kWh\n")
 
-        # Update starting location for the next iteration
-        starting_coords = destination_coords
-
-    print("Battery level reached 20%. The journey stops.")
+        # Update the current location for the next iteration
+        current_location = destination
 
 if __name__ == "__main__":
     main()
