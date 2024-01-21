@@ -1,5 +1,4 @@
 import requests
-import random
 
 # Replace 'YOUR_API_KEY' with your actual Google Maps API key
 api_key = 'YOUR_API_KEY'
@@ -13,23 +12,19 @@ def calculate_energy_consumption(distance):
     energy_consumption = distance * efficiency
     return energy_consumption
 
-# Function to get a random coordinate in Auckland city
-def get_random_coordinate():
-    # Replace these values with the latitude and longitude bounds for Auckland
-    # You can adjust these bounds based on your specific area of interest
-    min_lat, max_lat = -36.9, -36.7
-    min_lon, max_lon = 174.6, 174.9
+# List of predefined coordinates for the cars to travel between
+coordinates = [
+    (-36.8536098, 174.7664805),
+    (-37.0089331, 174.7838064),
+    (-36.9409461, 174.9039851),
+    (-36.849963, 174.7560774)
+]
 
-    # Generate random coordinates within the specified bounds
-    latitude = random.uniform(min_lat, max_lat)
-    longitude = random.uniform(min_lon, max_lon)
-
-    return latitude, longitude
-
-# Simulate 10 electric vehicles traveling randomly
+# Simulate 10 electric vehicles traveling between the predefined coordinates
 for car_id in range(1, 11):
-    start_coordinate = get_random_coordinate()
-    end_coordinate = get_random_coordinate()
+    # Choose random start and end coordinates from the list
+    start_coordinate = random.choice(coordinates)
+    end_coordinate = random.choice(coordinates)
 
     # Use the Google Maps Directions API to get route information
     url = f'https://maps.googleapis.com/maps/api/directions/json?origin={start_coordinate[0]},{start_coordinate[1]}&destination={end_coordinate[0]},{end_coordinate[1]}&key={api_key}'
