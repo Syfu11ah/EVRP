@@ -29,17 +29,8 @@ class ElectricMotor:
         return energy / self.efficiency
 
 def get_directions(origin, destination):
-  # Get directions between the current location and the random destination
-directions_result = gmaps.directions(starting_location, destination, mode="driving", departure_time=datetime.now())
-
-# Check if there is at least one leg in the directions result
-if not directions_result or 'legs' not in directions_result[0] or not directions_result[0]['legs']:
-    print("No valid route found. Skipping this destination.")
-    continue
-
-# Access the steps from the first leg
-steps = directions_result[0]['legs'][0]['steps']
-
+    directions_result = gmaps.directions(origin, destination, mode="driving", departure_time=datetime.now())
+    return directions_result[0]['legs'][0]['steps']
 
 def get_elevation(profile):
     elevation_result = gmaps.elevation(profile)
@@ -62,11 +53,20 @@ def calculate_energy_consumption(distance, motor, energy_consumption_data, batte
 
     return energy_consumption, energy_consumed_by_motor
 
-def generate_random_destination():
-    # Generate random latitude and longitude for a destination
-    latitude = random.uniform(-90, 90)
-    longitude = random.uniform(-180, 180)
-    return latitude, longitude
+def generate_random_destination(starting_location, max_distance_km=10.0):
+    # Generate a random angle and distance within Auckland city
+    angle = random.uniform(0, 2 * 3.14159)
+    distance = random.uniform(0, max_distance_km)
+
+    # Convert distance to degrees (approximation)
+    delta_lat = distance / 111.32
+    delta_lng = distance / (111.32 * abs(1.0 / (1.0 * 3.14159 / 180.0)))
+
+    # Calculate new coordinates
+    new_lat = starting_location[0] + delta_lat * math.cos(angle)
+    new_lng = starting_location[1] + delta_lng * math.sin(angle)
+
+    return new_lat, new_lng
 
 def save_to_csv(data, filename):
     with open(filename, 'w', newline='') as csvfile:
@@ -78,7 +78,7 @@ def save_to_csv(data, filename):
             writer.writerow(row)
 
 def main():
-    # Starting location point
+    # Starting location point in Auckland city
     starting_location = (-36.8536054, 174.7616096)
 
     # Electric vehicle specifications
@@ -94,11 +94,19 @@ def main():
     data = []
 
     while battery_module.soc > battery_threshold:
-        # Generate a random destination
-        destination = generate_random_destination()
+        # Generate a random destination within Auckland city
+        destination = generate_random_destination(starting_location)
 
         # Get directions between the current location and the random destination
-        steps = get_directions(starting_location, destination)
+        directions_result = gmaps.directions(starting_location, destination, mode="driving", departure_time=datetime.now())
+
+        # Check if there is at least one leg in the directions result
+        if not directions_result or 'legs' not in directions_result[0] or not directions_result[0]['legs']:
+            print("No valid route found. Skipping this destination.")
+            continue
+
+        # Access the steps from the first leg
+        steps = directions_result[0]['legs'][0]['steps']
 
         inclination_factor = 0.0
 
