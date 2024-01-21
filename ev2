@@ -1,5 +1,6 @@
 import googlemaps
 import time
+import math
 
 # Replace 'YOUR_API_KEY' with your actual Google Maps API key
 API_KEY = 'YOUR_API_KEY'
@@ -13,32 +14,34 @@ waypoints = [
     (-36.849963, 174.7560774)
 ]
 
-# Energy consumption rate in watt-hours per kilometer
-energy_consumption_rate = 200.0
-battery_capacity = 60.0
-initial_soc = 80.0
+# Vehicle parameters
+vehicle_mass = 1500.0  # Mass of the vehicle in kg
+gravitational_acceleration = 9.81  # Gravitational acceleration in m/s^2
+rolling_resistance_coefficient = 0.01  # Rolling resistance coefficient
+drag_coefficient = 0.3  # Drag coefficient
+frontal_area = 2.0  # Frontal area of the vehicle in m^2
+
+# Battery specifications
+battery_capacity = 60.0  # Replace with the actual capacity of the battery in kilowatt-hours
+initial_soc = 80.0  # Replace with the actual initial state of charge in percentage
 
 class ElectricVehicle:
     def __init__(self, battery_capacity, initial_soc):
         self.battery_capacity = battery_capacity
         self.soc = initial_soc
 
-    def drive(self, distance):
-        energy_consumption = distance * energy_consumption_rate / 1000.0
-        self.soc -= (energy_consumption / self.battery_capacity) * 100.0
-        self.soc = max(0.0, self.soc)
-        return energy_consumption
+    def drive(self, distance, acceleration, gradient_angle, velocity):
+        # Calculate energy consumption and update battery state of charge
+        energy_consumption = (
+            (vehicle_mass * acceleration + 
+             vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
+             vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(math.radians(gradient_angle)) +
+             0.5 * drag_coefficient * frontal_area * 1.225 * velocity**2) * distance
+        ) / 3600  # Convert energy from J to Wh
 
-def get_shortest_path(start, end):
-    # Obtain directions for the shortest path
-    result = gmaps.directions(start, end, mode="driving", avoid="ferries")
-    if result:
-        # Extract distance and duration from the first route
-        distance = result[0]['legs'][0]['distance']['value']
-        duration = result[0]['legs'][0]['duration']['value']
-        return distance, duration
-    else:
-        return None
+        self.soc -= (energy_consumption / self.battery_capacity) * 100.0
+        self.soc = max(0.0, self.soc)  # Ensure the state of charge is not below 0
+        return energy_consumption
 
 # Initialize the electric vehicle
 ev = ElectricVehicle(battery_capacity, initial_soc)
@@ -53,11 +56,18 @@ for i in range(len(waypoints) - 1):
     start_point = current_location
     end_point = waypoints[i + 1]
 
-    # Get the shortest path distance and duration
-    distance, duration = get_shortest_path(start_point, end_point)
+    # Calculate distance, duration, and velocity between two points
+    result = gmaps.distance_matrix(start_point, end_point, mode="driving")
+    distance = result['rows'][0]['elements'][0]['distance']['value']
+    duration = result['rows'][0]['elements'][0]['duration']['value']
+    velocity = (distance / duration) if duration > 0 else 0.0
+
+    # Assume constant acceleration for simplicity (you may need a more sophisticated model)
+    acceleration = 2.0  # m/s^2
+    gradient_angle = 0.0  # Assume no gradient for simplicity
 
     # Drive the electric vehicle and get energy consumption
-    energy_consumption = ev.drive(distance / 1000.0)
+    energy_consumption = ev.drive(distance / 1000.0, acceleration, gradient_angle, velocity)
 
     # Update total distance, total duration, and current location for the next iteration
     total_distance += distance
@@ -65,7 +75,7 @@ for i in range(len(waypoints) - 1):
     current_location = end_point
 
     # Calculate remaining battery capacity
-    remaining_battery_capacity = ev.battery_capacity - (energy_consumption / 1000.0)
+    remaining_battery_capacity = ev.battery_capacity - (energy_consumption / 1000.0)  # Convert energy consumption to kilowatt-hours
 
     # Print results for the current trip
     print(f'Trip {i + 1}:')
