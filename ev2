@@ -73,7 +73,7 @@ for i in range(len(waypoints) - 1):
 
     if start_elevation is not None and end_elevation is not None:
         # Estimate road gradient_angle based on the difference in elevation
-        gradient_angle = math.degrees(math.atan2(end_elevation - start_elevation, distance))
+        gradient_angle = math.degrees(math.atan2(end_elevation - start_elevation, get_distance(start_point, end_point)))
 
         # Calculate distance, duration, and velocity between two points
         result = gmaps.distance_matrix(start_point, end_point, mode="driving")
