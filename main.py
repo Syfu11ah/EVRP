@@ -11,10 +11,60 @@ def get_directions(origin, destination):
     directions_result = gmaps.directions(origin, destination, mode="driving", departure_time=datetime.now())
     return directions_result
 
-def calculate_energy_consumption(distance_km, efficiency_kwh_per_km):
-    # Calculate energy consumption based on distance and vehicle efficiency
-    energy_consumption_kwh = distance_km * efficiency_kwh_per_km
+def calculate_energy_consumption(
+    distance_km,
+    efficiency_kwh_per_km,
+    vehicle_mass_kg,
+    mass_factor,
+    acceleration,
+    coefficient_of_rolling,
+    air_density,
+    front_area,
+    aerodynamic_drag,
+    wind_speed,
+    road_angle,
+):
+    # Constants
+    gravity = 9.81  # m/s^2, acceleration due to gravity
+
+    # Convert distance to meters
+    distance_meters = distance_km * 1000.0
+
+    # Calculate energy consumption based on various factors
+    energy_consumption_kwh = (
+        efficiency_kwh_per_km
+        + (0.5 * vehicle_mass_kg * acceleration**2) / mass_factor
+        + vehicle_mass_kg * gravity * distance_meters * coefficient_of_rolling
+        + 0.5 * air_density * front_area * aerodynamic_drag * wind_speed**2 * distance_meters
+        + vehicle_mass_kg * gravity * distance_meters * road_angle
+    )
+
     return energy_consumption_kwh
+# Adjust these values based on the vehicle's specifications
+vehicle_mass_kg = 1500.0
+mass_factor = 1.2
+acceleration = 0.5  # m/s^2
+coefficient_of_rolling = 0.01
+air_density = 1.225  # kg/m^3
+front_area = 2.0  # m^2
+aerodynamic_drag = 0.3
+wind_speed = 0.0  # m/s (assuming no wind for simplicity)
+road_angle = 0.0  # degrees (assuming flat road for simplicity)
+
+# Calculate energy consumption for the trip
+energy_consumption = calculate_energy_consumption(
+    distance_km,
+    efficiency_kwh_per_km,
+    vehicle_mass_kg,
+    mass_factor,
+    acceleration,
+    coefficient_of_rolling,
+    air_density,
+    front_area,
+    aerodynamic_drag,
+    wind_speed,
+    road_angle,
+)
 
 def main():
     # Auckland city coordinates (you can adjust these coordinates)
