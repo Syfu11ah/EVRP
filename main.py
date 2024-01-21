@@ -29,7 +29,7 @@ class ElectricMotor:
         return energy / self.efficiency
 
 def get_directions(origin, destination):
-   # Get directions between the current location and the random destination
+  # Get directions between the current location and the random destination
 directions_result = gmaps.directions(starting_location, destination, mode="driving", departure_time=datetime.now())
 
 # Check if there is at least one leg in the directions result
