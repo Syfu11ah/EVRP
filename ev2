@@ -48,6 +48,7 @@ class ElectricVehicle:
             # Adjust energy consumption to the available state of charge
             energy_consumption = self.soc * self.battery_capacity / 100.0
 
+        # Update state of charge based on the adjusted energy consumption
         self.soc -= (energy_consumption / self.battery_capacity) * 100.0
         self.soc = max(0.0, self.soc)  # Ensure the state of charge is not below 0
         return energy_consumption
@@ -85,7 +86,7 @@ def get_detailed_route(start_point, end_point):
         start_point, end_point,
         mode="driving",
         departure_time="now",
-        traffic_model="best_guess"
+        traffic_model="best_guess"  # Use "best_guess" for real-time traffic information
     )
     return directions_result
 
@@ -96,7 +97,7 @@ ev = ElectricVehicle(battery_capacity, initial_soc)
 current_location = waypoints[0]
 total_distance = 0.0
 total_duration = 0.0
-energy_consumption = 0.0
+total_energy_consumption = 0.0
 
 # Iterate through waypoints
 for i in range(len(waypoints) - 1):
@@ -128,16 +129,19 @@ for i in range(len(waypoints) - 1):
         # Drive the electric vehicle and get energy consumption
         energy_consumption = ev.drive(distance, acceleration, gradient_angle, velocity)
 
+        # Accumulate total energy consumption for the trip
+        total_energy_consumption += energy_consumption
+
         # Update total distance, total duration, and current location for the next iteration
         total_distance += distance
         total_duration += duration
         current_location = end_point
 
         # Calculate remaining battery capacity
-        remaining_battery_capacity = ev.battery_capacity - (energy_consumption / 1000.0)  # Convert energy consumption to kilowatt-hours
+        remaining_battery_capacity = ev.battery_capacity - (total_energy_consumption / 1000.0)  # Convert energy consumption to kilowatt-hours
 
-        # Print results for the current trip
-        print(f'Trip {i + 1}:')
+        # Print results for the current trip segment
+        print(f'Trip {i + 1} Segment:')
         print(f'Origin: {start_point}')
         print(f'Destination: {end_point}')
         print(f'Distance: {distance:.2f} kilometers')  # Distance is now directly calculated
@@ -166,7 +170,7 @@ for i in range(len(waypoints) - 1):
 total_distance_km = total_distance
 
 # Calculate remaining battery capacity after all trips
-remaining_battery_capacity_total = ev.battery_capacity - (total_distance_km * energy_consumption / 1000.0)
+remaining_battery_capacity_total = ev.battery_capacity - (total_distance_km * total_energy_consumption / 1000.0)
 
 # Print total results
 print(f'Total distance traveled: {total_distance_km:.2f} kilometers')
