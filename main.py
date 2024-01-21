@@ -1,53 +1,51 @@
 import googlemaps
-import pandas as pd
-from geopy.distance import geodesic
+from datetime import datetime
 
-# Set your Google Maps API key
-API_KEY = 'your_api_key'
-gmaps = googlemaps.Client(key=API_KEY)
+def get_directions(api_key, origin, destinations):
+    gmaps = googlemaps.Client(key=api_key)
 
-def calculate_distance(origin, destination):
-    return geodesic(origin, destination).km
+    directions_result = gmaps.directions(
+        origin,
+        destinations,
+        mode="driving",
+        departure_time=datetime.now()
+    )
 
-def calculate_energy_consumption(distance):
-    # Your energy consumption calculation logic goes here
-    # This could involve the specific characteristics of your electric vehicle
-    # For simplicity, let's assume a constant energy consumption rate for now
-    energy_consumption_rate = 0.2  # kWh per km
-    return distance * energy_consumption_rate
+    return directions_result
+
+def calculate_energy_consumption(distance_km, efficiency_kWh_per_km):
+    energy_consumption_kWh = distance_km * efficiency_kWh_per_km
+    return energy_consumption_kWh
 
 def main():
-    destinations = [
-        "Auckland, New Zealand",
-        "Destination 1, Auckland",
-        "Destination 2, Auckland",
-        # Add more destinations as needed
-    ]
+    # Replace 'YOUR_GOOGLE_MAPS_API_KEY' with your actual API key
+    api_key = 'YOUR_GOOGLE_MAPS_API_KEY'
+    
+    # Example destinations
+    origin = "Start Location"
+    destinations = ["Destination 1", "Destination 2", "Destination 3"]
 
-    coordinates = [gmaps.geocode(dest)[0]['geometry']['location'] for dest in destinations]
+    # Example electric vehicle energy consumption model
+    efficiency_kWh_per_km = 0.2  # Adjust this based on your electric vehicle's specifications
 
-    results_df = pd.DataFrame(columns=["Segment", "Distance (km)", "Energy Consumption (kWh)"])
+    # Get directions
+    directions_result = get_directions(api_key, origin, destinations)
 
-    total_energy_consumed = 0.0
+    total_distance_km = 0
 
-    for i in range(len(coordinates) - 1):
-        origin = coordinates[i]
-        destination = coordinates[i + 1]
+    # Calculate energy consumption for each leg of the journey
+    for leg in directions_result[0]['legs']:
+        distance_km = leg['distance']['value'] / 1000.0
+        total_distance_km += distance_km
 
-        distance = calculate_distance((origin['lat'], origin['lng']), (destination['lat'], destination['lng']))
+        energy_consumption_kWh = calculate_energy_consumption(distance_km, efficiency_kWh_per_km)
 
-        energy_consumption = calculate_energy_consumption(distance)
+        print(f"Leg: {leg['start_address']} to {leg['end_address']}")
+        print(f"Distance: {distance_km:.2f} km")
+        print(f"Energy Consumption: {energy_consumption_kWh:.2f} kWh")
+        print("-----------------------------")
 
-        results_df = results_df.append({
-            "Segment": i + 1,
-            "Distance (km)": distance,
-            "Energy Consumption (kWh)": energy_consumption
-        }, ignore_index=True)
-
-        total_energy_consumed += energy_consumption
-
-    print(results_df)
-    print(f"Total Energy Consumption: {total_energy_consumed:.2f} kWh")
+    print(f"Total Distance: {total_distance_km:.2f} km")
 
 if __name__ == "__main__":
     main()
