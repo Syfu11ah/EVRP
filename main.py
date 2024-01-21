@@ -6,7 +6,7 @@ gmaps = googlemaps.Client(key='YOUR_API_KEY')
 
 def get_elevation(location):
     # Get elevation from Google Maps Elevation API
-    elevation_result = gmaps.elevation(location)
+    elevation_result = gmaps.elevation((location['lat'], location['lng']))
     return elevation_result[0]['elevation']
 
 def calculate_energy_consumption(start_location, waypoints, motor_efficiency, battery_capacity):
@@ -30,8 +30,11 @@ def calculate_energy_consumption(start_location, waypoints, motor_efficiency, ba
         distance_in_kilometers = distance_in_meters / 1000.0
 
         # Estimate road inclination using start and end location elevations
-        start_elevation = get_elevation(waypoints[i])
-        end_elevation = get_elevation(waypoints[i + 1])
+        start_location_dict = directions_result[0]['legs'][0]['start_location']
+        end_location_dict = directions_result[0]['legs'][0]['end_location']
+        
+        start_elevation = get_elevation(start_location_dict)
+        end_elevation = get_elevation(end_location_dict)
         road_inclination = (end_elevation - start_elevation) / distance_in_kilometers
 
         # Adjust energy consumption for motor efficiency, battery capacity, and road inclination
@@ -50,10 +53,10 @@ def calculate_energy_consumption(start_location, waypoints, motor_efficiency, ba
 
 if __name__ == "__main__":
     # Define the starting location and waypoints
-    start_location = "-36.8536054,174.7616096"
+    start_location = {"lat": -36.8536054, "lng": 174.7616096}
     waypoints = [
-        "destination_lat1,destination_long1",
-        "destination_lat2,destination_long2",
+        {"lat": destination_lat1, "lng": destination_long1},
+        {"lat": destination_lat2, "lng": destination_long2},
         # Add more waypoints as needed
     ]
 
