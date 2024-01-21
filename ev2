@@ -31,7 +31,7 @@ class ElectricVehicle:
         self.battery_capacity = battery_capacity
         self.soc = initial_soc
 
-    def drive(self, distance, acceleration, gradient_angle, velocity):
+    def drive(self, distance, acceleration, gradient_angle, velocity, duration):
         # Calculate energy consumption and update battery state of charge
         energy_consumption = (
             (vehicle_mass * acceleration + 
@@ -127,7 +127,7 @@ for i in range(len(waypoints) - 1):
         acceleration = 2.0  # m/s^2
 
         # Drive the electric vehicle and get energy consumption
-        energy_consumption = ev.drive(distance, acceleration, gradient_angle, velocity)
+        energy_consumption = ev.drive(distance, acceleration, gradient_angle, velocity, duration)
 
         # Accumulate total energy consumption for the trip
         total_energy_consumption += energy_consumption
@@ -161,7 +161,8 @@ for i in range(len(waypoints) - 1):
                 print('---')
                 # Print energy consumption for each route segment
                 segment_distance = step['distance']['value'] / 1000.0  # Convert distance to kilometers
-                segment_energy_consumption = ev.drive(segment_distance, acceleration, gradient_angle, velocity)
+                segment_duration = step['duration']['value'] / 60.0  # Convert duration to minutes
+                segment_energy_consumption = ev.drive(segment_distance, acceleration, gradient_angle, velocity, segment_duration)
                 print(f"Energy Consumption for Segment: {segment_energy_consumption:.2f} watt-hours")
         print('\n')
 
