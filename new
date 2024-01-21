@@ -15,50 +15,52 @@ waypoints = [
 # Energy consumption rate in watt-hours per kilometer
 energy_consumption_rate = 200.0  # Replace with the actual energy consumption rate of the vehicle
 
-# Initial battery state of charge and capacity
-initial_soc = 80.0  # Replace with the actual initial state of charge in percentage
+# Battery specifications
 battery_capacity = 60.0  # Replace with the actual capacity of the battery in kilowatt-hours
+initial_soc = 80.0  # Replace with the actual initial state of charge in percentage
 
-def calculate_distance_and_duration(api_key, waypoints):
-    gmaps = googlemaps.Client(key=api_key)
+class Motor:
+    def __init__(self, efficiency):
+        self.efficiency = efficiency  # Efficiency of the motor (percentage)
 
-    total_distance = 0.0
-    total_duration = 0.0
+    def calculate_energy_consumption(self, distance):
+        # Calculate energy consumption based on distance and motor efficiency
+        energy_consumption = distance * energy_consumption_rate / (self.efficiency / 100.0)
+        return energy_consumption
 
-    for i in range(len(waypoints) - 1):
-        start_point = waypoints[i]
-        end_point = waypoints[i + 1]
+class BatteryModule:
+    def __init__(self, capacity, initial_soc):
+        self.capacity = capacity  # Capacity of the battery module in kilowatt-hours
+        self.soc = initial_soc  # State of charge of the battery module (percentage)
 
-        # Calculate distance and duration between two points
-        result = gmaps.distance_matrix(start_point, end_point, mode="driving")
-        distance = result['rows'][0]['elements'][0]['distance']['value']
-        duration = result['rows'][0]['elements'][0]['duration']['value']
+    def update_soc(self, energy_consumed):
+        # Update state of charge based on energy consumed
+        self.soc -= (energy_consumed / self.capacity) * 100.0
+        self.soc = max(0.0, self.soc)  # Ensure the state of charge is not below 0
 
-        total_distance += distance
-        total_duration += duration
+class ElectricVehicle:
+    def __init__(self, motor, battery_module):
+        self.motor = motor
+        self.battery_module = battery_module
 
-    # Convert total distance to kilometers
-    total_distance_km = total_distance / 1000.0
+    def drive(self, distance):
+        # Calculate energy consumption using the motor and update battery state of charge
+        energy_consumption = self.motor.calculate_energy_consumption(distance)
+        self.battery_module.update_soc(energy_consumption)
+        return energy_consumption
 
-    return total_distance_km, total_duration
+# Initialize motor and battery module
+efficiency_of_motor = 90.0  # Replace with the actual efficiency of the motor in percentage
+motor = Motor(efficiency_of_motor)
+battery = BatteryModule(battery_capacity, initial_soc)
 
-def calculate_energy_consumption(distance, energy_consumption_rate):
-    # Calculate energy consumption in watt-hours for a given distance
-    energy_consumption = distance * energy_consumption_rate
-    return energy_consumption
-
-def calculate_battery_soc(initial_soc, energy_consumption, battery_capacity):
-    # Calculate the battery state of charge after a given energy consumption
-    remaining_capacity = battery_capacity - (energy_consumption / 1000.0)  # Convert energy consumption to kilowatt-hours
-    new_soc = (remaining_capacity / battery_capacity) * 100.0
-
-    return max(0.0, new_soc)  # Ensure the state of charge is not below 0
+# Initialize the electric vehicle
+ev = ElectricVehicle(motor, battery)
 
 # Initialize variables
 current_location = waypoints[0]
 total_distance = 0.0
 total_duration = 0.0
-current_soc = initial_soc
 
 # Iterate through waypoints
 for i in range(len(waypoints) - 1):
@@ -70,14 +72,13 @@ for i in range(len(waypoints) - 1):
     distance = result['rows'][0]['elements'][0]['distance']['value']
     duration = result['rows'][0]['elements'][0]['duration']['value']
 
-    # Calculate energy consumption for the current trip
-    trip_energy_consumption = calculate_energy_consumption(distance / 1000.0, energy_consumption_rate)
+    # Drive the electric vehicle and get energy consumption
+    energy_consumption = ev.drive(distance / 1000.0)
 
-    # Update total distance, total duration, current location, and battery state of charge for the next iteration
+    # Update total distance, total duration, and current location for the next iteration
     total_distance += distance
     total_duration += duration
     current_location = end_point
-    current_soc = calculate_battery_soc(current_soc, trip_energy_consumption, battery_capacity)
 
     # Print results for the current trip
     print(f'Trip {i + 1}:')
@@ -85,17 +86,13 @@ for i in range(len(waypoints) - 1):
     print(f'Destination: {end_point}')
     print(f'Distance: {distance / 1000.0:.2f} kilometers')
     print(f'Traveling time: {duration / 60:.2f} minutes')
-    print(f'Energy consumption: {trip_energy_consumption:.2f} watt-hours')
-    print(f'Battery SoC: {current_soc:.2f}%\n')
+    print(f'Energy consumption: {energy_consumption:.2f} watt-hours')
+    print(f'Battery SoC: {ev.battery_module.soc:.2f}%\n')
 
 # Convert total distance to kilometers
 total_distance_km = total_distance / 1000.0
 
-# Calculate total energy consumption for all trips
-total_energy_consumption = calculate_energy_consumption(total_distance_km, energy_consumption_rate)
-
 # Print total results
 print(f'Total distance traveled: {total_distance_km:.2f} kilometers')
 print(f'Total traveling time: {total_duration / 60:.2f} minutes')
-print(f'Total energy consumption: {total_energy_consumption:.2f} watt-hours')
-print(f'Final Battery SoC: {current_soc:.2f}%')
+print(f'Final Battery SoC: {ev.battery_module.soc:.2f}%')
