@@ -43,6 +43,11 @@ class ElectricVehicle:
         # Limit energy consumption to remaining battery capacity
         energy_consumption = min(energy_consumption, self.soc * self.battery_capacity / 100.0)
 
+        # Check if energy consumption is greater than available state of charge
+        if energy_consumption > self.soc * self.battery_capacity / 100.0:
+            # Adjust energy consumption to the available state of charge
+            energy_consumption = self.soc * self.battery_capacity / 100.0
+
         self.soc -= (energy_consumption / self.battery_capacity) * 100.0
         self.soc = max(0.0, self.soc)  # Ensure the state of charge is not below 0
         return energy_consumption
