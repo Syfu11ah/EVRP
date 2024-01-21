@@ -1,65 +1,51 @@
 import googlemaps
-import pandas as pd
+from geopy.distance import geodesic
 
-# Replace 'YOUR_API_KEY' with your Google Maps API key
-gmaps = googlemaps.Client(key='YOUR_API_KEY')
+# Set your Google Maps API key
+API_KEY = 'your_api_key'
+gmaps = googlemaps.Client(key=API_KEY)
 
-class ElectricVehicle:
-    def __init__(self, name, battery_capacity_kwh, motor_efficiency):
-        self.name = name
-        self.battery_capacity_kwh = battery_capacity_kwh
-        self.motor_efficiency = motor_efficiency
+def calculate_distance(origin, destination):
+    return geodesic(origin, destination).km
 
-def calculate_energy_consumption(distance, road_inclination, vehicle):
+def calculate_energy_consumption(distance):
     # Your energy consumption calculation logic goes here
-    # This is just a placeholder example
-    motor_energy_consumption = distance * road_inclination * vehicle.motor_efficiency
-    battery_energy_consumption = motor_energy_consumption / vehicle.battery_capacity_kwh
-    total_energy_consumption = motor_energy_consumption + battery_energy_consumption
-    return total_energy_consumption
+    # This could involve the specific characteristics of your electric vehicle
+    # For simplicity, let's assume a constant energy consumption rate for now
+    energy_consumption_rate = 0.2  # kWh per km
+    return distance * energy_consumption_rate
 
 def main():
-    # Replace with your starting location and destination addresses
-    locations = ["Auckland, New Zealand", "Destination 1", "Destination 2", "Destination 3"]
-
-    # Replace with the specifications of your vehicles
-    vehicles = [
-        ElectricVehicle(name="Vehicle 1", battery_capacity_kwh=60, motor_efficiency=0.85),
-        ElectricVehicle(name="Vehicle 2", battery_capacity_kwh=80, motor_efficiency=0.90),
-        # Add more vehicles as needed
+    # Specify the list of destinations
+    destinations = [
+        "Auckland, New Zealand",
+        "Destination 1, Auckland",
+        "Destination 2, Auckland",
+        # Add more destinations as needed
     ]
 
-    # Initialize an empty DataFrame to store the results
-    columns = ["Vehicle", "Location", "Distance (km)", "Road Inclination", "Energy Consumption (kWh)"]
-    results_df = pd.DataFrame(columns=columns)
+    # Get the coordinates for each destination
+    coordinates = [gmaps.geocode(dest)[0]['geometry']['location'] for dest in destinations]
 
-    for vehicle in vehicles:
-        for i in range(len(locations)-1):
-            origin = locations[i]
-            destination = locations[i+1]
+    total_energy_consumed = 0.0
 
-            # Get directions from Google Maps API
-            directions_result = gmaps.directions(origin, destination, mode="driving")
+    # Iterate through each destination
+    for i in range(len(coordinates) - 1):
+        origin = coordinates[i]
+        destination = coordinates[i + 1]
 
-            # Extract relevant information from the API response
-            distance = directions_result[0]['legs'][0]['distance']['value'] / 1000  # Convert meters to kilometers
-            road_inclination = 0.05  # Replace with your road inclination calculation logic
+        # Calculate distance between current and next destination
+        distance = calculate_distance((origin['lat'], origin['lng']), (destination['lat'], destination['lng']))
 
-            # Calculate energy consumption
-            energy_consumption = calculate_energy_consumption(distance, road_inclination, vehicle)
+        # Calculate energy consumption for the segment
+        energy_consumption = calculate_energy_consumption(distance)
 
-            # Append results to the DataFrame
-            results_df = results_df.append({
-                "Vehicle": vehicle.name,
-                "Location": f"{origin} to {destination}",
-                "Distance (km)": distance,
-                "Road Inclination": road_inclination,
-                "Energy Consumption (kWh)": energy_consumption
-            }, ignore_index=True)
+        print(f"Segment {i+1}: Distance - {distance:.2f} km, Energy Consumption - {energy_consumption:.2f} kWh")
 
-    # Save results to CSV
-    results_df.to_csv("energy_consumption_results.csv", index=False)
-    print("Results saved to energy_consumption_results.csv")
+        # Accumulate total energy consumption
+        total_energy_consumed += energy_consumption
+
+    print(f"Total Energy Consumption: {total_energy_consumed:.2f} kWh")
 
 if __name__ == "__main__":
     main()
