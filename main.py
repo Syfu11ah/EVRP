@@ -29,8 +29,17 @@ class ElectricMotor:
         return energy / self.efficiency
 
 def get_directions(origin, destination):
-    directions_result = gmaps.directions(origin, destination, mode="driving", departure_time=datetime.now())
-    return directions_result[0]['legs'][0]['steps']
+   # Get directions between the current location and the random destination
+directions_result = gmaps.directions(starting_location, destination, mode="driving", departure_time=datetime.now())
+
+# Check if there is at least one leg in the directions result
+if not directions_result or 'legs' not in directions_result[0] or not directions_result[0]['legs']:
+    print("No valid route found. Skipping this destination.")
+    continue
+
+# Access the steps from the first leg
+steps = directions_result[0]['legs'][0]['steps']
+
 
 def get_elevation(profile):
     elevation_result = gmaps.elevation(profile)
