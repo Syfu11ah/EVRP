@@ -1,19 +1,9 @@
 import googlemaps
 from random import randint
-import json
 
 # Replace 'YOUR_API_KEY' with your actual Google Maps API key
 api_key = 'YOUR_API_KEY'
 gmaps = googlemaps.Client(key=api_key)
-
-# Auckland city coordinates
-auckland_coords = (-36.8485, 174.7633)
-
-def get_random_location():
-    # Generate random latitude and longitude within Auckland city bounds
-    lat = auckland_coords[0] + 0.05 * (randint(0, 100) / 100.0)
-    lng = auckland_coords[1] + 0.05 * (randint(0, 100) / 100.0)
-    return lat, lng
 
 def calculate_energy_consumption(distance_km):
     # This is a simple placeholder function; you may replace it with a more accurate model
@@ -21,24 +11,34 @@ def calculate_energy_consumption(distance_km):
     energy_consumption_per_km = 0.2  # kWh per km (example value)
     return distance_km * energy_consumption_per_km
 
+def get_directions(origin, destination):
+    # Get directions from the specified origin to destination
+    directions_result = gmaps.directions(
+        origin=origin,
+        destination=destination,
+        mode="driving",
+        avoid="ferries",
+        region="nz"
+    )
+    return directions_result
+
 def main():
-    # Number of random destinations to visit
-    num_destinations = 5
+    # User-defined starting location
+    starting_coords = (-36.8485, 174.7633)  # Auckland city coordinates
 
-    # Initialize last destination as the starting point
-    last_destination_coords = auckland_coords
+    # Initial battery level (in percentage)
+    battery_level = 100.0
 
-    for _ in range(num_destinations):
-        destination_coords = get_random_location()
-
-        # Get directions from the last destination to the new destination
-        directions_result = gmaps.directions(
-            origin=last_destination_coords,
-            destination=destination_coords,
-            mode="driving",
-            avoid="ferries",
-            region="nz"
+    # Keep traveling until the battery reaches 20%
+    while battery_level > 20.0:
+        # Generate a random destination within Auckland city bounds
+        destination_coords = (
+            starting_coords[0] + 0.05 * (randint(0, 100) / 100.0),
+            starting_coords[1] + 0.05 * (randint(0, 100) / 100.0)
         )
+
+        # Get directions from the starting location to the random destination
+        directions_result = get_directions(starting_coords, destination_coords)
 
         # Extract distance from the directions result
         distance_km = directions_result[0]['legs'][0]['distance']['value'] / 1000.0
@@ -46,14 +46,20 @@ def main():
         # Calculate energy consumption based on the distance
         energy_consumption = calculate_energy_consumption(distance_km)
 
+        # Update battery level
+        battery_level -= energy_consumption
+
         # Print results
-        print(f"Start: {last_destination_coords}")
+        print(f"Start: {starting_coords}")
         print(f"Destination: {destination_coords}")
         print(f"Distance: {distance_km:.2f} km")
-        print(f"Energy Consumption: {energy_consumption:.2f} kWh\n")
+        print(f"Energy Consumption: {energy_consumption:.2f} kWh")
+        print(f"Battery Level: {battery_level:.2f}%\n")
 
-        # Update last destination for the next iteration
-        last_destination_coords = destination_coords
+        # Update starting location for the next iteration
+        starting_coords = destination_coords
+
+    print("Battery level reached 20%. The journey stops.")
 
 if __name__ == "__main__":
     main()
