@@ -1,0 +1,95 @@
+import googlemaps
+import time
+
+# Replace 'YOUR_API_KEY' with your actual Google Maps API key
+API_KEY = 'YOUR_API_KEY'
+gmaps = googlemaps.Client(key=API_KEY)
+
+# Waypoints
+waypoints = [
+    (-36.8536098, 174.7664805),
+    (-37.0089331, 174.7838064),
+    (-36.9409461, 174.9039851),
+    (-36.849963, 174.7560774)
+]
+
+# Energy consumption rate in watt-hours per kilometer
+energy_consumption_rate = 200.0
+battery_capacity = 60.0
+initial_soc = 80.0
+
+class ElectricVehicle:
+    def __init__(self, battery_capacity, initial_soc):
+        self.battery_capacity = battery_capacity
+        self.soc = initial_soc
+
+    def drive(self, distance):
+        energy_consumption = distance * energy_consumption_rate / 1000.0
+        self.soc -= (energy_consumption / self.battery_capacity) * 100.0
+        self.soc = max(0.0, self.soc)
+        return energy_consumption
+
+def get_shortest_path(start, end):
+    # Obtain directions for the shortest path
+    result = gmaps.directions(start, end, mode="driving", avoid="ferries")
+    if result:
+        # Extract distance and duration from the first route
+        distance = result[0]['legs'][0]['distance']['value']
+        duration = result[0]['legs'][0]['duration']['value']
+        return distance, duration
+    else:
+        return None
+
+# Initialize the electric vehicle
+ev = ElectricVehicle(battery_capacity, initial_soc)
+
+# Initialize variables
+current_location = waypoints[0]
+total_distance = 0.0
+total_duration = 0.0
+
+# Iterate through waypoints
+for i in range(len(waypoints) - 1):
+    start_point = current_location
+    end_point = waypoints[i + 1]
+
+    # Get the shortest path distance and duration
+    distance, duration = get_shortest_path(start_point, end_point)
+
+    # Drive the electric vehicle and get energy consumption
+    energy_consumption = ev.drive(distance / 1000.0)
+
+    # Update total distance, total duration, and current location for the next iteration
+    total_distance += distance
+    total_duration += duration
+    current_location = end_point
+
+    # Calculate remaining battery capacity
+    remaining_battery_capacity = ev.battery_capacity - (energy_consumption / 1000.0)
+
+    # Print results for the current trip
+    print(f'Trip {i + 1}:')
+    print(f'Origin: {start_point}')
+    print(f'Destination: {end_point}')
+    print(f'Distance: {distance / 1000.0:.2f} kilometers')
+    print(f'Traveling time: {duration / 60:.2f} minutes')
+    print(f'Energy consumption: {energy_consumption:.2f} watt-hours')
+    print(f'Battery SoC: {ev.soc:.2f}%')
+    print(f'Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
+    print(f'Remaining Battery Capacity: {remaining_battery_capacity:.2f} kWh\n')
+
+    # Introduce a delay of 2 minutes after each trip
+    time.sleep(120)
+
+# Convert total distance to kilometers
+total_distance_km = total_distance / 1000.0
+
+# Calculate remaining battery capacity after all trips
+remaining_battery_capacity_total = ev.battery_capacity - (total_distance / 1000.0 * energy_consumption_rate / 1000.0)
+
+# Print total results
+print(f'Total distance traveled: {total_distance_km:.2f} kilometers')
+print(f'Total traveling time: {total_duration / 60:.2f} minutes')
+print(f'Final Battery SoC: {ev.soc:.2f}%')
+print(f'Total Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
+print(f'Total Remaining Battery Capacity: {remaining_battery_capacity_total:.2f} kWh')
