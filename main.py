@@ -44,11 +44,17 @@ def main():
     acceleration = 0.1  # in m/s^2
     road_angle = 0.05  # 5% road incline
 
+    # Battery capacity in joules
+    battery_capacity = 1000000  # 1 MJ
+
     # Initialize the starting point as Auckland coordinates
     current_location = auckland_coordinates
 
+    # Initialize the initial battery level to 100%
+    current_battery_level = battery_capacity
+
     # Continue driving until the battery drops below 20%
-    while True:
+    while current_battery_level > 0.2 * battery_capacity:
         # Generate random destination coordinates within Auckland city
         dest_latitude = current_location[0] + random.uniform(-0.1, 0.1)
         dest_longitude = current_location[1] + random.uniform(-0.1, 0.1)
@@ -66,10 +72,14 @@ def main():
             vehicle_mass, acceleration, road_angle, distance_km
         )
 
+        # Update the battery level
+        current_battery_level -= energy_consumption
+
         print(f"Start Location: {current_location}")
         print(f"Destination: {destination}")
         print(f"Distance: {distance_km:.2f} km")
-        print(f"Energy Consumption: {energy_consumption:.2f} J\n")
+        print(f"Energy Consumption: {energy_consumption:.2f} J")
+        print(f"Battery Level: {current_battery_level:.2f} J\n")
 
         # Update the current location for the next iteration
         current_location = destination
