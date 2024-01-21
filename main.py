@@ -26,15 +26,18 @@ def main():
     # Number of random directions to generate
     num_directions = 5
 
+    # Initialize the starting point as Auckland coordinates
+    current_location = auckland_coordinates
+
     for _ in range(num_directions):
         # Generate random destination coordinates within Auckland city
-        dest_latitude = auckland_coordinates[0] + random.uniform(-0.1, 0.1)
-        dest_longitude = auckland_coordinates[1] + random.uniform(-0.1, 0.1)
+        dest_latitude = current_location[0] + random.uniform(-0.1, 0.1)
+        dest_longitude = current_location[1] + random.uniform(-0.1, 0.1)
 
         destination = (dest_latitude, dest_longitude)
 
         # Get directions from the current location to the destination
-        directions_result = get_directions(auckland_coordinates, destination)
+        directions_result = get_directions(current_location, destination)
 
         # Extract distance and duration from the directions result
         distance_km = directions_result[0]['legs'][0]['distance']['value'] / 1000.0
@@ -43,10 +46,14 @@ def main():
         # Calculate energy consumption for the trip
         energy_consumption = calculate_energy_consumption(distance_km, efficiency_kwh_per_km)
 
+        print(f"Start Location: {current_location}")
         print(f"Destination: {destination}")
         print(f"Distance: {distance_km:.2f} km")
         print(f"Duration: {duration_seconds // 60} minutes")
         print(f"Energy Consumption: {energy_consumption:.2f} kWh\n")
+
+        # Update the current location for the next iteration
+        current_location = destination
 
 if __name__ == "__main__":
     main()
