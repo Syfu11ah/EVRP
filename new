@@ -57,6 +57,9 @@ for i in range(len(waypoints) - 1):
     total_duration += duration
     current_location = end_point
 
+    # Calculate remaining battery capacity
+    remaining_battery_capacity = ev.battery_capacity - (energy_consumption / 1000.0)  # Convert energy consumption to kilowatt-hours
+
     # Print results for the current trip
     print(f'Trip {i + 1}:')
     print(f'Origin: {start_point}')
@@ -65,13 +68,18 @@ for i in range(len(waypoints) - 1):
     print(f'Traveling time: {duration / 60:.2f} minutes')
     print(f'Energy consumption: {energy_consumption:.2f} watt-hours')
     print(f'Battery SoC: {ev.soc:.2f}%')
-    print(f'Battery Capacity: {ev.battery_capacity:.2f} kWh\n')
+    print(f'Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
+    print(f'Remaining Battery Capacity: {remaining_battery_capacity:.2f} kWh\n')
 
 # Convert total distance to kilometers
 total_distance_km = total_distance / 1000.0
+
+# Calculate remaining battery capacity after all trips
+remaining_battery_capacity_total = ev.battery_capacity - (total_distance / 1000.0 * energy_consumption_rate / 1000.0)
 
 # Print total results
 print(f'Total distance traveled: {total_distance_km:.2f} kilometers')
 print(f'Total traveling time: {total_duration / 60:.2f} minutes')
 print(f'Final Battery SoC: {ev.soc:.2f}%')
-print(f'Total Battery Capacity: {ev.battery_capacity:.2f} kWh')
+print(f'Total Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
+print(f'Total Remaining Battery Capacity: {remaining_battery_capacity_total:.2f} kWh')
