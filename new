@@ -1,87 +1,67 @@
-import requests
+import googlemaps
+from datetime import datetime
 
-def is_within_allowed_area(destination, allowed_area):
-    lat, lng = destination
-    return (
-        allowed_area[0][0] <= lat <= allowed_area[1][0] and
-        allowed_area[0][1] <= lng <= allowed_area[1][1]
-    )
+def calculate_energy_consumption(distance_km, efficiency_kWh_per_km):
+    return distance_km * efficiency_kWh_per_km
 
-def get_directions(api_key, waypoints):
-    origin = waypoints[0]
-    destination = waypoints[-1]
-    waypoints_str = "|".join([f"{lat},{lng}" for lat, lng in waypoints[1:-1]])
+def get_route_coordinates(api_key, origin, destination, mode='driving'):
+    gmaps = googlemaps.Client(key=api_key)
 
-    endpoint = "https://maps.googleapis.com/maps/api/directions/json"
-    params = {
-        "origin": f"{origin[0]},{origin[1]}",
-        "destination": f"{destination[0]},{destination[1]}",
-        "waypoints": f"via:{waypoints_str}",
-        "key": api_key,
-    }
+    # Get directions
+    directions_result = gmaps.directions(origin, destination, mode=mode, departure_time=datetime.now())
 
-    response = requests.get(endpoint, params=params)
-    data = response.json()
+    # Extract route coordinates
+    route_coordinates = []
+    for step in directions_result[0]['legs'][0]['steps']:
+        start_location = step['start_location']
+        route_coordinates.append((start_location['lat'], start_location['lng']))
 
-    if data["status"] == "OK":
-        return data["routes"][0]["legs"]
-    else:
-        print(f"Error: {data['status']}")
-        return None
+    # Add the destination coordinates
+    end_location = directions_result[0]['legs'][0]['end_location']
+    route_coordinates.append((end_location['lat'], end_location['lng']))
 
-def calculate_energy_consumption(distance, efficiency):
-    # Assuming a constant energy consumption rate (kWh/km)
-    energy_consumed = distance * efficiency
-    return energy_consumed
+    return route_coordinates
 
 def main():
-    api_key = "YOUR_GOOGLE_MAPS_API_KEY"
-    allowed_area = [
-        (-36.8536098, 174.7560774),  # Southwest corner
-        (-37.0089331, 174.9039851),  # Northeast corner
-    ]
-    waypoints = [
-        (-36.8536098, 174.7664805),
-        (-37.0089331, 174.7838064),
-        (-36.9409461, 174.9039851),
-        (-36.849963, 174.7560774),
-    ]
+    api_key = 'YOUR_API_KEY'
+    destinations = [(-37.0089331, 174.7838064), (-36.9409461, 174.9039851),
+                    (-36.849963, 174.7560774), (-36.6896228, 174.7517096)]
 
-    efficiency = 0.2  # Adjust as needed
-    battery_level = 100.0  # Starting battery level
+    mode = 'driving'  # You can change the mode to 'walking', 'bicycling', etc.
 
-    while battery_level > 20.0:
-        directions = get_directions(api_key, waypoints)
+    efficiency_kWh_per_km = 0.2  # Replace with your vehicle's efficiency
+    initial_battery_capacity = 100.0  # Initial battery capacity in percentage
+    min_battery_capacity = 20.0  # Minimum battery capacity to stop the trip
 
-        if directions:
-            next_destination = (directions[-1]["end_location"]["lat"], directions[-1]["end_location"]["lng"])
+    total_energy_consumption = 0
+    remaining_battery_capacity = initial_battery_capacity
+    last_reached_destination = None
 
-            if not is_within_allowed_area(next_destination, allowed_area):
-                print("Destination outside allowed area. Stopping.")
-                break
-
-            print(f"Current Location: {waypoints[0]}")
-            print(f"Destination: {waypoints[-1]}")
-
-            total_distance = sum(leg["distance"]["value"] for leg in directions)
-            print(f"Total Distance: {total_distance / 1000} km")
-
-            # Retrieve travel duration
-            total_duration = sum(leg["duration"]["value"] for leg in directions)
-            print(f"Total Duration: {total_duration / 60} minutes")
-
-            energy_consumed = calculate_energy_consumption(total_distance / 1000, efficiency)
-            print(f"Energy Consumption: {energy_consumed} kWh")
-
-            # Assuming the battery capacity is 60 kWh (adjust as needed)
-            battery_capacity = 60.0
-            battery_level -= (energy_consumed / battery_capacity) * 100.0
-            print(f"Battery Level: {battery_level}%")
-
-            # Update the starting point for the next route
-            waypoints[0] = next_destination
+    for destination in destinations:
+        if last_reached_destination is not None:
+            origin = last_reached_destination
         else:
+            origin = (-36.8536098, 174.7664805)  # Initial starting point
+
+        route_coordinates = get_route_coordinates(api_key, origin, destination, mode)
+        distance_km = sum(gmaps.distance_matrix(route_coordinates[i], route_coordinates[i+1])['rows'][0]['elements'][0]['distance']['value'] / 1000 for i in range(len(route_coordinates)-1))
+        energy_consumption = calculate_energy_consumption(distance_km, efficiency_kWh_per_km)
+        total_energy_consumption += energy_consumption
+        remaining_battery_capacity -= (energy_consumption / initial_battery_capacity) * 100
+
+        print(f"Route from {origin} to {destination}:")
+        print(f"Distance: {distance_km:.2f} km")
+        print(f"Energy Consumption: {energy_consumption:.2f} kWh")
+        print(f"Remaining Battery Capacity: {remaining_battery_capacity:.2f}%")
+
+        if remaining_battery_capacity <= min_battery_capacity:
+            print(f"Stopping the trip as remaining battery capacity is below {min_battery_capacity}%")
             break
 
+        last_reached_destination = destination
+
+    print(f"Total Energy Consumption for the entire trip: {total_energy_consumption:.2f} kWh")
+
 if __name__ == "__main__":
+    gmaps = googlemaps.Client(key='YOUR_API_KEY')
     main()
