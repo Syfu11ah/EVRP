@@ -12,26 +12,61 @@ waypoints = [
     (-36.849963, 174.7560774)
 ]
 
-def calculate_distance(api_key, waypoints):
+# Energy consumption rate in watt-hours per kilometer
+energy_consumption_rate = 200.0  # Replace with the actual energy consumption rate of the vehicle
+
+def calculate_distance_and_duration(api_key, waypoints):
     gmaps = googlemaps.Client(key=api_key)
 
     total_distance = 0.0
+    total_duration = 0.0
+
     for i in range(len(waypoints) - 1):
         start_point = waypoints[i]
         end_point = waypoints[i + 1]
 
-        # Calculate distance between two points
+        # Calculate distance and duration between two points
         result = gmaps.distance_matrix(start_point, end_point, mode="driving")
-
-        # Extract distance in meters from the result
         distance = result['rows'][0]['elements'][0]['distance']['value']
+        duration = result['rows'][0]['elements'][0]['duration']['value']
+
         total_distance += distance
+        total_duration += duration
 
     # Convert total distance to kilometers
     total_distance_km = total_distance / 1000.0
 
-    return total_distance_km
+    return total_distance_km, total_duration
 
-# Calculate and print the total distance
-total_distance = calculate_distance(API_KEY, waypoints)
+def calculate_energy_consumption(total_distance, energy_consumption_rate):
+    # Calculate energy consumption in watt-hours
+    energy_consumption = total_distance * energy_consumption_rate
+    return energy_consumption
+
+# Calculate total distance and duration
+total_distance, total_duration = calculate_distance_and_duration(API_KEY, waypoints)
 print(f'Total distance traveled: {total_distance:.2f} kilometers')
+
+# Calculate energy consumption
+energy_consumption = calculate_energy_consumption(total_distance, energy_consumption_rate)
+print(f'Energy consumption: {energy_consumption:.2f} watt-hours')
+
+# Print route details
+for i in range(len(waypoints) - 1):
+    start_point = waypoints[i]
+    end_point = waypoints[i + 1]
+
+    print(f'\nRoute {i + 1}:')
+    print(f'Origin: {start_point}')
+    print(f'Destination: {end_point}')
+
+    # Get directions for each route
+    directions_result = gmaps.directions(start_point, end_point, mode="driving")
+    
+    # Extract and print duration for each route
+    route_duration = directions_result[0]['legs'][0]['duration']['text']
+    print(f'Traveling Time: {route_duration}')
+
+    # Print energy consumption for each route
+    route_energy_consumption = calculate_energy_consumption(directions_result[0]['legs'][0]['distance']['value'] / 1000.0, energy_consumption_rate)
+    print(f'Energy Consumption: {route_energy_consumption:.2f} watt-hours\n')
