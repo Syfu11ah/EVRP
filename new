@@ -1,5 +1,12 @@
 import requests
 
+def is_within_allowed_area(destination, allowed_area):
+    lat, lng = destination
+    return (
+        allowed_area[0][0] <= lat <= allowed_area[1][0] and
+        allowed_area[0][1] <= lng <= allowed_area[1][1]
+    )
+
 def get_directions(api_key, waypoints):
     origin = waypoints[0]
     destination = waypoints[-1]
@@ -29,6 +36,10 @@ def calculate_energy_consumption(distance, efficiency):
 
 def main():
     api_key = "YOUR_GOOGLE_MAPS_API_KEY"
+    allowed_area = [
+        (-36.8536098, 174.7560774),  # Southwest corner
+        (-37.0089331, 174.9039851),  # Northeast corner
+    ]
     waypoints = [
         (-36.8536098, 174.7664805),
         (-37.0089331, 174.7838064),
@@ -43,6 +54,15 @@ def main():
         directions = get_directions(api_key, waypoints)
 
         if directions:
+            next_destination = (directions[-1]["end_location"]["lat"], directions[-1]["end_location"]["lng"])
+
+            if not is_within_allowed_area(next_destination, allowed_area):
+                print("Destination outside allowed area. Stopping.")
+                break
+
+            print(f"Current Location: {waypoints[0]}")
+            print(f"Destination: {waypoints[-1]}")
+
             total_distance = sum(leg["distance"]["value"] for leg in directions)
             print(f"Total Distance: {total_distance / 1000} km")
 
@@ -59,7 +79,7 @@ def main():
             print(f"Battery Level: {battery_level}%")
 
             # Update the starting point for the next route
-            waypoints[0] = (directions[-1]["end_location"]["lat"], directions[-1]["end_location"]["lng"])
+            waypoints[0] = next_destination
         else:
             break
 
