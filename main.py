@@ -23,13 +23,17 @@ def main():
     # Define the electric vehicle's efficiency (kWh per km)
     efficiency_kwh_per_km = 0.2  # Adjust this based on the vehicle's specifications
 
-    # Number of random directions to generate
-    num_directions = 5
+    # Battery capacity in kWh
+    battery_capacity_kwh = 100.0  # Adjust this based on the vehicle's battery capacity
 
     # Initialize the starting point as Auckland coordinates
     current_location = auckland_coordinates
 
-    for _ in range(num_directions):
+    # Initialize the initial battery level to 100%
+    current_battery_level = battery_capacity_kwh
+
+    # Continue driving until the battery drops below 20%
+    while current_battery_level > 20:
         # Generate random destination coordinates within Auckland city
         dest_latitude = current_location[0] + random.uniform(-0.1, 0.1)
         dest_longitude = current_location[1] + random.uniform(-0.1, 0.1)
@@ -46,11 +50,15 @@ def main():
         # Calculate energy consumption for the trip
         energy_consumption = calculate_energy_consumption(distance_km, efficiency_kwh_per_km)
 
+        # Update the battery level
+        current_battery_level -= energy_consumption
+
         print(f"Start Location: {current_location}")
         print(f"Destination: {destination}")
         print(f"Distance: {distance_km:.2f} km")
         print(f"Duration: {duration_seconds // 60} minutes")
-        print(f"Energy Consumption: {energy_consumption:.2f} kWh\n")
+        print(f"Energy Consumption: {energy_consumption:.2f} kWh")
+        print(f"Battery Level: {current_battery_level:.2f} kWh\n")
 
         # Update the current location for the next iteration
         current_location = destination
