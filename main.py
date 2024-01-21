@@ -11,17 +11,20 @@ def get_directions(origin, destination):
     directions_result = gmaps.directions(origin, destination, mode="driving", departure_time=datetime.now())
     return directions_result
 
-def calculate_energy_consumption(distance_km, efficiency_kwh_per_km):
-    # Calculate energy consumption based on distance and vehicle efficiency
-    energy_consumption_kwh = distance_km * efficiency_kwh_per_km
-    return energy_consumption_kwh
+def calculate_energy_consumption(distance_km, motor_efficiency, battery_efficiency):
+    # Assuming a linear relationship between distance and energy consumption
+    motor_energy_consumption_kwh = distance_km / motor_efficiency
+    battery_energy_consumption_kwh = motor_energy_consumption_kwh / battery_efficiency
+
+    return motor_energy_consumption_kwh, battery_energy_consumption_kwh
 
 def main():
     # Auckland city coordinates (you can adjust these coordinates)
     auckland_coordinates = (-36.8485, 174.7633)
 
-    # Define the electric vehicle's efficiency (kWh per km)
-    efficiency_kwh_per_km = 0.2  # Adjust this based on the vehicle's specifications
+    # Define the electric vehicle's parameters
+    motor_efficiency = 0.2  # Efficiency of the electric motor (kWh per km)
+    battery_efficiency = 0.9  # Efficiency of the battery (percentage)
 
     # Battery capacity in kWh
     battery_capacity_kwh = 100.0  # Adjust this based on the vehicle's battery capacity
@@ -48,16 +51,19 @@ def main():
         duration_seconds = directions_result[0]['legs'][0]['duration']['value']
 
         # Calculate energy consumption for the trip
-        energy_consumption = calculate_energy_consumption(distance_km, efficiency_kwh_per_km)
+        motor_energy_consumption, battery_energy_consumption = calculate_energy_consumption(
+            distance_km, motor_efficiency, battery_efficiency
+        )
 
         # Update the battery level
-        current_battery_level -= energy_consumption
+        current_battery_level -= battery_energy_consumption
 
         print(f"Start Location: {current_location}")
         print(f"Destination: {destination}")
         print(f"Distance: {distance_km:.2f} km")
         print(f"Duration: {duration_seconds // 60} minutes")
-        print(f"Energy Consumption: {energy_consumption:.2f} kWh")
+        print(f"Motor Energy Consumption: {motor_energy_consumption:.2f} kWh")
+        print(f"Battery Energy Consumption: {battery_energy_consumption:.2f} kWh")
         print(f"Battery Level: {current_battery_level:.2f} kWh\n")
 
         # Update the current location for the next iteration
