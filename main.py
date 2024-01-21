@@ -7,8 +7,8 @@ API_KEY = 'YOUR_API_KEY'
 gmaps = googlemaps.Client(key=API_KEY)
 
 def get_directions(origin, destination):
-    # Get directions from the origin to the destination
-    directions_result = gmaps.directions(origin, destination, mode="driving", departure_time=datetime.now())
+    # Get directions from the origin to the destination with the "shortest" option
+    directions_result = gmaps.directions(origin, destination, mode="driving", departure_time=datetime.now(), optimize_waypoints=True)
     return directions_result
 
 def calculate_energy_consumption(distance_km, motor_efficiency, battery_efficiency):
