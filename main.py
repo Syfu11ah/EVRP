@@ -1,157 +1,50 @@
 import googlemaps
-import csv
 from datetime import datetime
-import random
 
 # Replace 'YOUR_API_KEY' with your actual Google Maps API key
 api_key = 'YOUR_API_KEY'
 gmaps = googlemaps.Client(key=api_key)
 
-class BatteryModule:
-    def __init__(self, capacity, initial_soc):
-        self.capacity = capacity  # kWh
-        self.soc = initial_soc  # Initial state of charge in percentage
-
-    def charge(self, energy):
-        # Charge the battery
-        self.soc = min(100, self.soc + (energy / self.capacity) * 100)
-
-    def discharge(self, energy):
-        # Discharge the battery
-        self.soc = max(0, self.soc - (energy / self.capacity) * 100)
-
-class ElectricMotor:
-    def __init__(self, efficiency):
-        self.efficiency = efficiency  # Efficiency of the electric motor
-
-    def consume_energy(self, energy):
-        # Consume energy from the battery
-        return energy / self.efficiency
-
 def get_directions(origin, destination):
     directions_result = gmaps.directions(origin, destination, mode="driving", departure_time=datetime.now())
     return directions_result[0]['legs'][0]['steps']
 
-def get_elevation(profile):
-    elevation_result = gmaps.elevation(profile)
-    return elevation_result[0]['elevation']
-
-def get_energy_consumption_data(origin, destination):
-    # This is a placeholder function; replace it with a call to your energy consumption data source
-    # For example, you might use an electric vehicle API, database, or model
-    # Return the energy consumption data in kWh
-    # Example: return 30.0
-    return 30.0
-
-def calculate_energy_consumption(distance, motor, energy_consumption_data, battery_module, inclination_factor):
-    # Calculate energy consumption for the route considering inclination
-    energy_consumption = distance * (1 + inclination_factor) * energy_consumption_data
-
-    # Discharge the battery after adjusting for motor efficiency
-    energy_consumed_by_motor = motor.consume_energy(energy_consumption)
-    battery_module.discharge(energy_consumed_by_motor)
-
-    return energy_consumption, energy_consumed_by_motor
-
-def generate_random_destination(starting_location, max_distance_km=10.0):
-    # Generate a random angle and distance within Auckland city
-    angle = random.uniform(0, 2 * 3.14159)
-    distance = random.uniform(0, max_distance_km)
-
-    # Convert distance to degrees (approximation)
-    delta_lat = distance / 111.32
-    delta_lng = distance / (111.32 * abs(1.0 / (1.0 * 3.14159 / 180.0)))
-
-    # Calculate new coordinates
-    new_lat = starting_location[0] + delta_lat * math.cos(angle)
-    new_lng = starting_location[1] + delta_lng * math.sin(angle)
-
-    return new_lat, new_lng
-
-def save_to_csv(data, filename):
-    with open(filename, 'w', newline='') as csvfile:
-        fieldnames = ['Route', 'Distance (km)', 'Energy Consumption (kWh)', 'Energy Consumed by Motor (kWh)', 'Remaining Battery Capacity (%)']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-        writer.writeheader()
-        for row in data:
-            writer.writerow(row)
+def calculate_energy_consumption(distance):
+    # Replace this with your own energy consumption model
+    # Example: 0.2 kWh per mile
+    energy_consumption_per_mile = 0.2
+    return distance * energy_consumption_per_mile
 
 def main():
-    # Starting location point in Auckland city
-    starting_location = (-36.8536054, 174.7616096)
+    # List of destinations (latitude, longitude)
+    destinations = [
+        (37.7749, -122.4194),  # San Francisco, CA
+        (34.0522, -118.2437),  # Los Angeles, CA
+        # Add more destinations as needed
+    ]
 
-    # Electric vehicle specifications
-    motor_efficiency = 0.9  # Example: 90%
-    battery_capacity = 60.0  # Example: 60 kWh
-    initial_soc = 100.0  # Initial state of charge in percentage
+    total_energy_consumption = 0.0
 
-    motor = ElectricMotor(motor_efficiency)
-    battery_module = BatteryModule(battery_capacity, initial_soc)
+    for i in range(len(destinations) - 1):
+        origin = destinations[i]
+        destination = destinations[i + 1]
 
-    battery_threshold = 20.0  # Battery threshold to stop driving (percentage)
-
-    data = []
-
-    while battery_module.soc > battery_threshold:
-        # Generate a random destination within Auckland city
-        destination = generate_random_destination(starting_location)
-
-        # Get directions between the current location and the random destination
-        directions_result = gmaps.directions(starting_location, destination, mode="driving", departure_time=datetime.now())
-
-        # Check if there is at least one leg in the directions result
-        if not directions_result or 'legs' not in directions_result[0] or not directions_result[0]['legs']:
-            print("No valid route found. Skipping this destination.")
-            continue
-
-        # Access the steps from the first leg
-        steps = directions_result[0]['legs'][0]['steps']
-
-        inclination_factor = 0.0
-
-        for step in steps:
-            # Calculate inclination factor for each step
-            profile = [(step['start_location']['lat'], step['start_location']['lng']),
-                       (step['end_location']['lat'], step['end_location']['lng'])]
-            elevation_start = get_elevation(profile[:1])
-            elevation_end = get_elevation(profile[1:])
-            inclination_factor += max(0, (elevation_end - elevation_start) / (step['distance']['value'] / 1000.0))
-
-        inclination_factor /= len(steps)
+        # Get directions between two points
+        steps = get_directions(origin, destination)
 
         # Calculate total distance for the route
         total_distance = sum(step['distance']['value'] for step in steps) / 1000.0  # Convert meters to kilometers
 
-        # Retrieve energy consumption data from an external source
-        energy_consumption_data = get_energy_consumption_data(starting_location, destination)
+        # Calculate energy consumption for the route
+        energy_consumption = calculate_energy_consumption(total_distance)
+        total_energy_consumption += energy_consumption
 
-        # Calculate energy consumption for the route considering inclination
-        energy_consumption, energy_consumed_by_motor = calculate_energy_consumption(
-            total_distance, motor, energy_consumption_data, battery_module, inclination_factor
-        )
-
-        route_data = {
-            'Route': len(data) + 1,
-            'Distance (km)': total_distance,
-            'Energy Consumption (kWh)': energy_consumption,
-            'Energy Consumed by Motor (kWh)': energy_consumed_by_motor,
-            'Remaining Battery Capacity (%)': battery_module.soc
-        }
-
-        data.append(route_data)
-
-        print(f"Route {len(data)}:")
+        print(f"Route {i+1}:")
         print(f"  Distance: {total_distance:.2f} km")
         print(f"  Energy Consumption: {energy_consumption:.2f} kWh")
-        print(f"  Energy Consumed by Motor: {energy_consumed_by_motor:.2f} kWh")
-        print(f"  Remaining Battery Capacity: {battery_module.soc:.2f}%")
         print()
 
-    print(f"Total Energy Consumption for all routes: {sum(route['Energy Consumption (kWh)'] for route in data):.2f} kWh")
-
-    # Save data to CSV file
-    save_to_csv(data, 'energy_consumption_data.csv')
+    print(f"Total Energy Consumption for all routes: {total_energy_consumption:.2f} kWh")
 
 if __name__ == "__main__":
     main()
