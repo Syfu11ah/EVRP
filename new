@@ -1,0 +1,52 @@
+import googlemaps
+from random import randint
+import json
+
+# Replace 'YOUR_API_KEY' with your actual Google Maps API key
+api_key = 'YOUR_API_KEY'
+gmaps = googlemaps.Client(key=api_key)
+
+# Auckland city coordinates
+auckland_coords = (-36.8485, 174.7633)
+
+def get_random_location():
+    # Generate random latitude and longitude within Auckland city bounds
+    lat = auckland_coords[0] + 0.05 * (randint(0, 100) / 100.0)
+    lng = auckland_coords[1] + 0.05 * (randint(0, 100) / 100.0)
+    return lat, lng
+
+def calculate_energy_consumption(distance_km):
+    # This is a simple placeholder function; you may replace it with a more accurate model
+    # based on your electric vehicle's energy consumption characteristics
+    energy_consumption_per_km = 0.2  # kWh per km (example value)
+    return distance_km * energy_consumption_per_km
+
+def main():
+    # Number of random destinations to visit
+    num_destinations = 5
+
+    for _ in range(num_destinations):
+        destination_coords = get_random_location()
+
+        # Get directions from current location to the destination
+        directions_result = gmaps.directions(
+            origin=auckland_coords,
+            destination=destination_coords,
+            mode="driving",
+            avoid="ferries",
+            region="nz"
+        )
+
+        # Extract distance from the directions result
+        distance_km = directions_result[0]['legs'][0]['distance']['value'] / 1000.0
+
+        # Calculate energy consumption based on the distance
+        energy_consumption = calculate_energy_consumption(distance_km)
+
+        # Print results
+        print(f"Destination: {destination_coords}")
+        print(f"Distance: {distance_km:.2f} km")
+        print(f"Energy Consumption: {energy_consumption:.2f} kWh\n")
+
+if __name__ == "__main__":
+    main()
