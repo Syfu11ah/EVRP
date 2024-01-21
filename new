@@ -1,6 +1,7 @@
 import googlemaps
 from datetime import datetime
 import random
+import math
 
 class ElectricVehicleBattery:
     def __init__(self, capacity_kwh):
@@ -16,9 +17,39 @@ class ElectricVehicleBattery:
         return (self.current_level / self.capacity_kwh) * 100 < threshold_percentage
 
 class ElectricVehicle:
-    def __init__(self, efficiency_kwh_per_km, battery_capacity_kwh):
+    def __init__(self, efficiency_kwh_per_km, battery_capacity_kwh, vehicle_mass_kg,
+                 mass_factor, acceleration_m_s2, rolling_resistance_coefficient,
+                 air_density_kg_per_m3, front_area_m2, drag_coefficient, wind_speed_m_s,
+                 road_angle_deg):
         self.efficiency_kwh_per_km = efficiency_kwh_per_km
         self.battery = ElectricVehicleBattery(battery_capacity_kwh)
+
+        # Additional parameters for energy consumption calculation
+        self.vehicle_mass_kg = vehicle_mass_kg
+        self.mass_factor = mass_factor
+        self.acceleration_m_s2 = acceleration_m_s2
+        self.rolling_resistance_coefficient = rolling_resistance_coefficient
+        self.air_density_kg_per_m3 = air_density_kg_per_m3
+        self.front_area_m2 = front_area_m2
+        self.drag_coefficient = drag_coefficient
+        self.wind_speed_m_s = wind_speed_m_s
+        self.road_angle_deg = road_angle_deg
+
+    def calculate_energy_consumption(self, distance_km):
+        # Calculate energy consumption based on various factors
+        gravitational_force = 9.81  # m/s^2
+        inclination_force = gravitational_force * math.sin(math.radians(self.road_angle_deg))
+        rolling_resistance_force = self.rolling_resistance_coefficient * self.vehicle_mass_kg * gravitational_force
+        air_density_force = 0.5 * self.air_density_kg_per_m3 * self.front_area_m2 * self.drag_coefficient * (
+                    self.wind_speed_m_s ** 2)
+
+        total_force = (self.vehicle_mass_kg + self.mass_factor) * self.acceleration_m_s2 + inclination_force + rolling_resistance_force + air_density_force
+
+        # Convert force to work (energy) and then to energy consumption
+        work_done = total_force * distance_km * 1000  # Convert distance to meters
+        energy_consumption_kwh = work_done / 3600 / 1000  # Convert work to kWh
+
+        return energy_consumption_kwh
 
     def drive_to_destination(self, origin, destination):
         # Get directions from the origin to the destination
@@ -29,7 +60,7 @@ class ElectricVehicle:
         duration_seconds = directions_result[0]['legs'][0]['duration']['value']
 
         # Calculate energy consumption for the trip
-        energy_consumption = distance_km * self.efficiency_kwh_per_km
+        energy_consumption = self.calculate_energy_consumption(distance_km)
 
         # Update the battery level
         self.battery.update_battery_level(energy_consumption)
@@ -49,12 +80,27 @@ def main():
     # Auckland city coordinates (you can adjust these coordinates)
     auckland_coordinates = (-36.8485, 174.7633)
 
-    # Define the electric vehicle's efficiency (kWh per km) and battery capacity (kWh)
+    # Define parameters for the electric vehicle
     efficiency_kwh_per_km = 0.2  # Adjust this based on the vehicle's specifications
     battery_capacity_kwh = 100.0  # Adjust this based on the vehicle's battery capacity
 
+    # Additional parameters for energy consumption calculation
+    vehicle_mass_kg = 1500.0
+    mass_factor = 100.0
+    acceleration_m_s2 = 2.0
+    rolling_resistance_coefficient = 0.01
+    air_density_kg_per_m3 = 1.225
+    front_area_m2 = 2.0
+    drag_coefficient = 0.3
+    wind_speed_m_s = 0.0  # No wind for simplicity
+    road_angle_deg = 0.0  # Flat road for simplicity
+
     # Initialize the electric vehicle
-    ev = ElectricVehicle(efficiency_kwh_per_km, battery_capacity_kwh)
+    ev = ElectricVehicle(efficiency_kwh_per_km, battery_capacity_kwh,
+                         vehicle_mass_kg, mass_factor, acceleration_m_s2,
+                         rolling_resistance_coefficient, air_density_kg_per_m3,
+                         front_area_m2, drag_coefficient, wind_speed_m_s,
+                         road_angle_deg)
 
     # Initialize the starting point as Auckland coordinates
     current_location = auckland_coordinates
