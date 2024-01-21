@@ -1,49 +1,50 @@
-import googlemaps
+import requests
+import random
 
 # Replace 'YOUR_API_KEY' with your actual Google Maps API key
-API_KEY = 'YOUR_API_KEY'
-gmaps = googlemaps.Client(key=API_KEY)
+api_key = 'YOUR_API_KEY'
 
-# Coordinates of the locations
-current_location = (-37.0089331, 174.7838064)
-destination_location = (-36.8707883, 174.7701537)
-waypoints = [(-36.9409461, 174.9039851),
-             (-36.849963, 174.7560774),
-             (-36.6896228, 174.7517096)]
+# Function to calculate energy consumption for a given distance
+def calculate_energy_consumption(distance):
+    # Add your energy consumption calculation logic here
+    # This can be based on the electric vehicle model, efficiency, etc.
+    # For demonstration purposes, let's assume a simple linear relationship
+    efficiency = 0.2  # Wh per meter
+    energy_consumption = distance * efficiency
+    return energy_consumption
 
-# Combine the current location, waypoints, and destination
-locations = [current_location] + waypoints + [destination_location]
+# Function to get a random coordinate in Auckland city
+def get_random_coordinate():
+    # Replace these values with the latitude and longitude bounds for Auckland
+    # You can adjust these bounds based on your specific area of interest
+    min_lat, max_lat = -36.9, -36.7
+    min_lon, max_lon = 174.6, 174.9
 
-# Assuming a constant energy consumption rate (in Wh/km)
-energy_consumption_rate = 200  # Adjust this value based on your vehicle's efficiency
+    # Generate random coordinates within the specified bounds
+    latitude = random.uniform(min_lat, max_lat)
+    longitude = random.uniform(min_lon, max_lon)
 
-total_distance = 0
-total_energy_consumption = 0
-total_duration_seconds = 0
-last_location = None  # To store the last location for continuing the route
+    return latitude, longitude
 
-# Calculate energy consumption and duration
-for i, step in enumerate(result[0]['legs'][0]['steps']):
-    if i == 0 and last_location is not None:
-        # If continuing from the last location, set the origin accordingly
-        step['start_location'] = {'lat': last_location[0], 'lng': last_location[1]}
+# Simulate 10 electric vehicles traveling randomly
+for car_id in range(1, 11):
+    start_coordinate = get_random_coordinate()
+    end_coordinate = get_random_coordinate()
 
-    distance = step['distance']['value'] / 1000  # Convert distance from meters to kilometers
-    duration_seconds = step['duration']['value']
-    total_distance += distance
-    total_duration_seconds += duration_seconds
+    # Use the Google Maps Directions API to get route information
+    url = f'https://maps.googleapis.com/maps/api/directions/json?origin={start_coordinate[0]},{start_coordinate[1]}&destination={end_coordinate[0]},{end_coordinate[1]}&key={api_key}'
+    response = requests.get(url)
+    data = response.json()
 
-    energy_consumption = distance * energy_consumption_rate
-    total_energy_consumption += energy_consumption
+    # Extract distance from the API response
+    distance = data['routes'][0]['legs'][0]['distance']['value']  # in meters
 
-    # Save the end location for continuing the route
-    last_location = (step['end_location']['lat'], step['end_location']['lng'])
+    # Calculate energy consumption for the route
+    energy_consumption = calculate_energy_consumption(distance)
 
-    print(f"{step['html_instructions']}, Distance: {distance:.2f} km, Energy Consumption: {energy_consumption:.2f} Wh, Duration: {duration_seconds // 60} min {duration_seconds % 60} sec")
-
-# Print the total energy consumption and total duration for the entire route
-print(f"\nCurrent Location: {current_location}")
-print(f"Destination: {destination_location}")
-print(f"Total Distance: {total_distance:.2f} km")
-print(f"Total Energy Consumption: {total_energy_consumption:.2f} Wh")
-print(f"Total Duration: {total_duration_seconds // 60} min {total_duration_seconds % 60} sec")
+    print(f"Car {car_id}:")
+    print(f"Start Coordinate: {start_coordinate}")
+    print(f"End Coordinate: {end_coordinate}")
+    print(f"Distance: {distance} meters")
+    print(f"Energy Consumption: {energy_consumption} Wh")
+    print("----------------------------------")
