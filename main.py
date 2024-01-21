@@ -125,4 +125,16 @@ def main():
         data.append(route_data)
 
         print(f"Route {len(data)}:")
-        print(f"  Distance: {total_distance:.
+        print(f"  Distance: {total_distance:.2f} km")
+        print(f"  Energy Consumption: {energy_consumption:.2f} kWh")
+        print(f"  Energy Consumed by Motor: {energy_consumed_by_motor:.2f} kWh")
+        print(f"  Remaining Battery Capacity: {battery_module.soc:.2f}%")
+        print()
+
+    print(f"Total Energy Consumption for all routes: {sum(route['Energy Consumption (kWh)'] for route in data):.2f} kWh")
+
+    # Save data to CSV file
+    save_to_csv(data, 'energy_consumption_data.csv')
+
+if __name__ == "__main__":
+    main()
