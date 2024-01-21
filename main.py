@@ -4,8 +4,9 @@ from datetime import datetime
 # Replace YOUR_API_KEY with your actual Google Maps API key
 gmaps = googlemaps.Client(key='YOUR_API_KEY')
 
-def calculate_energy_consumption(start_location, waypoints, vehicle_efficiency):
+def calculate_energy_consumption(start_location, waypoints, vehicle_efficiency, motor_efficiency, battery_capacity):
     total_energy_consumption = 0.0
+    remaining_battery_capacity = battery_capacity
 
     for i in range(len(waypoints) - 1):
         # Get directions between waypoints
@@ -25,6 +26,17 @@ def calculate_energy_consumption(start_location, waypoints, vehicle_efficiency):
 
         # Calculate energy consumption using the formula: Energy = Distance * Efficiency
         energy_consumption = distance_in_kilometers * vehicle_efficiency
+
+        # Adjust energy consumption for electric motor efficiency
+        energy_consumption /= motor_efficiency
+
+        # Check if there is enough battery capacity for the trip
+        if remaining_battery_capacity >= energy_consumption:
+            remaining_battery_capacity -= energy_consumption
+        else:
+            print("Insufficient battery capacity for the trip.")
+            return None
+
         total_energy_consumption += energy_consumption
 
     return total_energy_consumption
@@ -38,10 +50,13 @@ if __name__ == "__main__":
         # Add more waypoints as needed
     ]
 
-    # Vehicle efficiency in kWh per kilometer
-    vehicle_efficiency = 0.2  # Change this value based on your specific vehicle
+    # Electric vehicle parameters
+    vehicle_efficiency = 0.2  # kWh per kilometer
+    motor_efficiency = 0.9  # Electric motor efficiency
+    battery_capacity = 60.0  # kWh, replace with your vehicle's actual battery capacity
 
     # Calculate total energy consumption
-    total_energy = calculate_energy_consumption(start_location, waypoints, vehicle_efficiency)
+    total_energy = calculate_energy_consumption(start_location, waypoints, vehicle_efficiency, motor_efficiency, battery_capacity)
 
-    print(f"Total energy consumption: {total_energy:.2f} kWh")
+    if total_energy is not None:
+        print(f"Total energy consumption: {total_energy:.2f} kWh")
