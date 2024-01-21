@@ -1,71 +1,50 @@
 import googlemaps
 from datetime import datetime
+import random
 
-# Replace YOUR_API_KEY with your actual Google Maps API key
-gmaps = googlemaps.Client(key='YOUR_API_KEY')
+# Replace 'YOUR_API_KEY' with your actual API key
+API_KEY = 'YOUR_API_KEY'
+gmaps = googlemaps.Client(key=API_KEY)
 
-def get_elevation(location):
-    # Get elevation from Google Maps Elevation API
-    elevation_result = gmaps.elevation((location['lat'], location['lng']))
-    return elevation_result[0]['elevation']
+def get_directions(origin, destination):
+    # Get directions from the origin to the destination
+    directions_result = gmaps.directions(origin, destination, mode="driving", departure_time=datetime.now())
+    return directions_result
 
-def calculate_energy_consumption(start_location, waypoints, motor_efficiency, battery_capacity):
-    total_energy_consumption = 0.0
-    remaining_battery_capacity = battery_capacity
+def calculate_energy_consumption(distance_km, efficiency_kwh_per_km):
+    # Calculate energy consumption based on distance and vehicle efficiency
+    energy_consumption_kwh = distance_km * efficiency_kwh_per_km
+    return energy_consumption_kwh
 
-    for i in range(len(waypoints) - 1):
-        # Get directions between waypoints
-        directions_result = gmaps.directions(
-            waypoints[i],
-            waypoints[i + 1],
-            mode="driving",
-            departure_time=datetime.now(),
-            avoid="ferries",
-        )
+def main():
+    # Auckland city coordinates (you can adjust these coordinates)
+    auckland_coordinates = (-36.8485, 174.7633)
 
-        # Extract distance in meters from the directions result
-        distance_in_meters = directions_result[0]['legs'][0]['distance']['value']
+    # Define the electric vehicle's efficiency (kWh per km)
+    efficiency_kwh_per_km = 0.2  # Adjust this based on the vehicle's specifications
 
-        # Convert distance from meters to kilometers
-        distance_in_kilometers = distance_in_meters / 1000.0
+    # Number of random directions to generate
+    num_directions = 5
 
-        # Estimate road inclination using start and end location elevations
-        start_location_dict = directions_result[0]['legs'][0]['start_location']
-        end_location_dict = directions_result[0]['legs'][0]['end_location']
-        
-        start_elevation = get_elevation(start_location_dict)
-        end_elevation = get_elevation(end_location_dict)
-        road_inclination = (end_elevation - start_elevation) / distance_in_kilometers
+    for _ in range(num_directions):
+        # Generate random destination coordinates within Auckland city
+        dest_latitude = auckland_coordinates[0] + random.uniform(-0.1, 0.1)
+        dest_longitude = auckland_coordinates[1] + random.uniform(-0.1, 0.1)
 
-        # Adjust energy consumption for motor efficiency, battery capacity, and road inclination
-        energy_consumption = (distance_in_kilometers / motor_efficiency) * battery_capacity * (1 + road_inclination)
+        destination = (dest_latitude, dest_longitude)
 
-        # Check if there is enough battery capacity for the trip
-        if remaining_battery_capacity >= energy_consumption:
-            remaining_battery_capacity -= energy_consumption
-        else:
-            print("Insufficient battery capacity for the trip.")
-            return None
+        # Get directions from the current location to the destination
+        directions_result = get_directions(auckland_coordinates, destination)
 
-        total_energy_consumption += energy_consumption
+        # Extract distance from the directions result
+        distance_km = directions_result[0]['legs'][0]['distance']['value'] / 1000.0
 
-    return total_energy_consumption
+        # Calculate energy consumption for the trip
+        energy_consumption = calculate_energy_consumption(distance_km, efficiency_kwh_per_km)
+
+        print(f"Destination: {destination}")
+        print(f"Distance: {distance_km:.2f} km")
+        print(f"Energy Consumption: {energy_consumption:.2f} kWh\n")
 
 if __name__ == "__main__":
-    # Define the starting location and waypoints
-    start_location = {"lat": -36.8536054, "lng": 174.7616096}
-    waypoints = [
-        {"lat": destination_lat1, "lng": destination_long1},
-        {"lat": destination_lat2, "lng": destination_long2},
-        # Add more waypoints as needed
-    ]
-
-    # Electric vehicle motor and battery parameters
-    motor_efficiency = 0.9  # Electric motor efficiency
-    battery_capacity = 60.0  # kWh, replace with your vehicle's actual battery capacity
-
-    # Calculate total energy consumption
-    total_energy = calculate_energy_consumption(start_location, waypoints, motor_efficiency, battery_capacity)
-
-    if total_energy is not None:
-        print(f"Total energy consumption: {total_energy:.2f} kWh")
+    main()
