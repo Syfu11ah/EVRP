@@ -159,6 +159,10 @@ for i in range(len(waypoints) - 1):
                 print(f"Start Location: {step['start_location']}")
                 print(f"End Location: {step['end_location']}")
                 print('---')
+                # Print energy consumption for each route segment
+                segment_distance = step['distance']['value'] / 1000.0  # Convert distance to kilometers
+                segment_energy_consumption = ev.drive(segment_distance, acceleration, gradient_angle, velocity)
+                print(f"Energy Consumption for Segment: {segment_energy_consumption:.2f} watt-hours")
         print('\n')
 
         # Introduce a delay of 2 minutes after each trip
