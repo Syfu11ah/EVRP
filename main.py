@@ -1,51 +1,47 @@
 import googlemaps
 from datetime import datetime
 
-def get_directions(api_key, origin, destinations):
-    gmaps = googlemaps.Client(key=api_key)
+# Replace YOUR_API_KEY with your actual Google Maps API key
+gmaps = googlemaps.Client(key='YOUR_API_KEY')
 
-    directions_result = gmaps.directions(
-        origin,
-        destinations,
-        mode="driving",
-        departure_time=datetime.now()
-    )
+def calculate_energy_consumption(start_location, waypoints, vehicle_efficiency):
+    total_energy_consumption = 0.0
 
-    return directions_result
+    for i in range(len(waypoints) - 1):
+        # Get directions between waypoints
+        directions_result = gmaps.directions(
+            waypoints[i],
+            waypoints[i + 1],
+            mode="driving",
+            departure_time=datetime.now(),
+            avoid="ferries",
+        )
 
-def calculate_energy_consumption(distance_km, efficiency_kWh_per_km):
-    energy_consumption_kWh = distance_km * efficiency_kWh_per_km
-    return energy_consumption_kWh
+        # Extract distance in meters from the directions result
+        distance_in_meters = directions_result[0]['legs'][0]['distance']['value']
 
-def main():
-    # Replace 'YOUR_GOOGLE_MAPS_API_KEY' with your actual API key
-    api_key = 'YOUR_GOOGLE_MAPS_API_KEY'
-    
-    # Example destinations
-    origin = "Start Location"
-    destinations = ["Destination 1", "Destination 2", "Destination 3"]
+        # Convert distance from meters to kilometers
+        distance_in_kilometers = distance_in_meters / 1000.0
 
-    # Example electric vehicle energy consumption model
-    efficiency_kWh_per_km = 0.2  # Adjust this based on your electric vehicle's specifications
+        # Calculate energy consumption using the formula: Energy = Distance * Efficiency
+        energy_consumption = distance_in_kilometers * vehicle_efficiency
+        total_energy_consumption += energy_consumption
 
-    # Get directions
-    directions_result = get_directions(api_key, origin, destinations)
-
-    total_distance_km = 0
-
-    # Calculate energy consumption for each leg of the journey
-    for leg in directions_result[0]['legs']:
-        distance_km = leg['distance']['value'] / 1000.0
-        total_distance_km += distance_km
-
-        energy_consumption_kWh = calculate_energy_consumption(distance_km, efficiency_kWh_per_km)
-
-        print(f"Leg: {leg['start_address']} to {leg['end_address']}")
-        print(f"Distance: {distance_km:.2f} km")
-        print(f"Energy Consumption: {energy_consumption_kWh:.2f} kWh")
-        print("-----------------------------")
-
-    print(f"Total Distance: {total_distance_km:.2f} km")
+    return total_energy_consumption
 
 if __name__ == "__main__":
-    main()
+    # Define the starting location and waypoints
+    start_location = "-36.8536054,174.7616096"
+    waypoints = [
+        "destination_lat1,destination_long1",
+        "destination_lat2,destination_long2",
+        # Add more waypoints as needed
+    ]
+
+    # Vehicle efficiency in kWh per kilometer
+    vehicle_efficiency = 0.2  # Change this value based on your specific vehicle
+
+    # Calculate total energy consumption
+    total_energy = calculate_energy_consumption(start_location, waypoints, vehicle_efficiency)
+
+    print(f"Total energy consumption: {total_energy:.2f} kWh")
