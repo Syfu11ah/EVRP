@@ -119,10 +119,28 @@ def save_to_csv(data, filename):
     with open(filename, 'w', newline='') as csvfile:
         fieldnames = ['Trip', 'Origin', 'Destination', 'Distance (km)', 'Realistic Traveling Time (min)',
                       'Energy Consumption (Wh)', 'Battery SoC (%)', 'Initial Battery Capacity (kWh)',
-                      'Remaining Battery Capacity (kWh)', 'Trip Steps']
+                      'Remaining Battery Capacity (kWh)']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(data)
+
+# Function to save trip steps to a CSV file
+def save_trip_steps_to_csv(trip_number, trip_steps, filename):
+    with open(filename, 'w', newline='') as csvfile:
+        fieldnames = ['Step', 'Instruction', 'Start Location', 'End Location', 'Distance (km)', 'Duration (min)', 'Energy Consumption (Wh)']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for step_number, step in enumerate(trip_steps):
+            writer.writerow({
+                'Step': step_number + 1,
+                'Instruction': step['html_instructions'],
+                'Start Location': step['start_location'],
+                'End Location': step['end_location'],
+                'Distance (km)': step['distance']['value'] / 1000.0,  # Convert distance to kilometers
+                'Duration (min)': step['duration']['value'] / 60.0,  # Convert duration to minutes
+                'Energy Consumption (Wh)': ev.drive(step['distance']['value'] / 1000.0, acceleration, gradient_angle, velocity, step['duration']['value'] / 60.0)
+            })
 
 # Initialize the electric vehicle
 ev = ElectricVehicle(battery_capacity, initial_soc)
@@ -150,7 +168,7 @@ for i in range(len(waypoints) - 1):
         # Estimate road gradient_angle based on the difference in elevation
         gradient_angle = math.degrees(math.atan2(end_elevation - start_elevation, distance))
 
-        # Get realistic traveling time based on current traffic conditions
+        # Get realistic traveling time on the route
         detailed_route = get_detailed_route(start_point, end_point)
         duration_in_traffic = detailed_route[0]['legs'][0]['duration_in_traffic']['value']
         duration = duration_in_traffic / 60.0  # Convert duration to minutes
@@ -185,8 +203,7 @@ for i in range(len(waypoints) - 1):
             'Energy Consumption (Wh)': energy_consumption,
             'Battery SoC (%)': ev.soc,
             'Initial Battery Capacity (kWh)': ev.battery_capacity,
-            'Remaining Battery Capacity (kWh)': remaining_battery_capacity,
-            'Trip Steps': detailed_route
+            'Remaining Battery Capacity (kWh)': remaining_battery_capacity
         }
         results_data.append(result_segment)
 
@@ -201,20 +218,10 @@ for i in range(len(waypoints) - 1):
         print(f'Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
         print(f'Remaining Battery Capacity: {remaining_battery_capacity:.2f} kWh\n')
 
-        # Get and print detailed route information
-        print(f'Detailed Route Instructions:')
-        for leg in detailed_route[0]['legs']:
-            for step in leg['steps']:
-                print(f"Instruction: {step['html_instructions']}")
-                print(f"Start Location: {step['start_location']}")
-                print(f"End Location: {step['end_location']}")
-                print('---')
-                # Print energy consumption for each route segment
-                segment_distance = step['distance']['value'] / 1000.0  # Convert distance to kilometers
-                segment_duration = step['duration']['value'] / 60.0  # Convert duration to minutes
-                segment_energy_consumption = ev.drive(segment_distance, acceleration, gradient_angle, velocity, segment_duration)
-                print(f"Energy Consumption for Segment: {segment_energy_consumption:.2f} watt-hours")
-        print('\n')
+        # Save trip steps to a separate CSV file
+        trip_steps_filename = f'trip_{i + 1}_steps.csv'
+        save_trip_steps_to_csv(i + 1, detailed_route[0]['legs'][0]['steps'], trip_steps_filename)
+        print(f'Trip {i + 1} steps saved to {trip_steps_filename}\n')
 
         # Introduce a delay of 2 minutes after each trip
         time.sleep(120)
