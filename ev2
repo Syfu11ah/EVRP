@@ -90,7 +90,7 @@ class ElectricVehicle:
         self.soc -= (duration_energy_consumption / self.battery_capacity) * 100.0
         self.soc = max(0.0, min(100.0, self.soc))  # Ensure the state of charge is within the range of 0% to 100%
 
-        return energy_consumption + duration_energy_consumption
+        return (energy_consumption + duration_energy_consumption) / 1000.0  # Convert energy consumption to kWh
 
 def get_distance(point1, point2):
     # Haversine formula to calculate distance between two points on the Earth
@@ -133,7 +133,7 @@ def get_detailed_route(start_point, end_point):
 def save_to_csv(data, filename):
     with open(filename, 'w', newline='') as csvfile:
         fieldnames = ['Trip', 'Origin', 'Destination', 'Distance (km)', 'Realistic Traveling Time (min)',
-                      'Energy Consumption (Wh)', 'Battery SoC (%)', 'Initial Battery Capacity (kWh)',
+                      'Energy Consumption (kWh)', 'Battery SoC (%)', 'Initial Battery Capacity (kWh)',
                       'Remaining Battery Capacity (kWh)']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -142,7 +142,7 @@ def save_to_csv(data, filename):
 # Function to save trip steps to a CSV file
 def save_trip_steps_to_csv(trip_number, trip_steps, filename):
     with open(filename, 'w', newline='') as csvfile:
-        fieldnames = ['Step', 'Instruction', 'Start Location', 'End Location', 'Distance (km)', 'Duration (min)', 'Energy Consumption (Wh)']
+        fieldnames = ['Step', 'Instruction', 'Start Location', 'End Location', 'Distance (km)', 'Duration (min)', 'Energy Consumption (kWh)']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
@@ -154,7 +154,7 @@ def save_trip_steps_to_csv(trip_number, trip_steps, filename):
                 'End Location': step['end_location'],
                 'Distance (km)': step['distance']['value'] / 1000.0,  # Convert distance to kilometers
                 'Duration (min)': step['duration']['value'] / 60.0,  # Convert duration to minutes
-                'Energy Consumption (Wh)': ev.drive(step['distance']['value'] / 1000.0, acceleration, gradient_angle, velocity, step['duration']['value'] / 60.0)
+                'Energy Consumption (kWh)': ev.drive(step['distance']['value'] / 1000.0, acceleration, gradient_angle, velocity, step['duration']['value'] / 60.0)
             })
 
 # Initialize the electric vehicle
@@ -206,7 +206,7 @@ for i in range(len(waypoints) - 1):
         current_location = end_point
 
         # Calculate remaining battery capacity
-        remaining_battery_capacity = ev.battery_capacity - (total_energy_consumption / 1000.0)  # Convert energy consumption to kilowatt-hours
+        remaining_battery_capacity = ev.battery_capacity - total_energy_consumption  # Energy consumption is now in kWh
 
         # Save results for the current trip segment
         result_segment = {
@@ -215,7 +215,7 @@ for i in range(len(waypoints) - 1):
             'Destination': end_point,
             'Distance (km)': distance,
             'Realistic Traveling Time (min)': duration,
-            'Energy Consumption (Wh)': energy_consumption,
+            'Energy Consumption (kWh)': energy_consumption,
             'Battery SoC (%)': ev.soc,
             'Initial Battery Capacity (kWh)': ev.battery_capacity,
             'Remaining Battery Capacity (kWh)': remaining_battery_capacity
@@ -228,10 +228,10 @@ for i in range(len(waypoints) - 1):
         print(f'Destination: {end_point}')
         print(f'Distance: {distance:.2f} kilometers')  # Distance is now directly calculated
         print(f'Realistic Traveling Time: {duration:.2f} minutes')
-        print(f'Energy consumption: {energy_consumption:.2f} watt-hours')
+        print(f'Energy consumption: {energy_consumption:.2f} kilowatt-hours')
         print(f'Battery SoC: {ev.soc:.2f}%')
-        print(f'Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
-        print(f'Remaining Battery Capacity: {remaining_battery_capacity:.2f} kWh\n')
+        print(f'Initial Battery Capacity: {ev.battery_capacity:.2f} kilowatt-hours')
+        print(f'Remaining Battery Capacity: {remaining_battery_capacity:.2f} kilowatt-hours\n')
 
         # Save trip steps to a separate CSV file
         trip_steps_filename = f'trip_{i + 1}_steps.csv'
@@ -240,7 +240,7 @@ for i in range(len(waypoints) - 1):
 
         # Introduce a delay of 2 minutes after each trip
         time.sleep(120)
-        
+
         # Check if battery level is below the minimum allowed
         if ev.soc <= min_soc:
             print(f'Battery level is below {min_soc}%. Stopping the vehicle.\n')
@@ -252,14 +252,14 @@ for i in range(len(waypoints) - 1):
 total_distance_km = total_distance
 
 # Calculate remaining battery capacity after all trips
-remaining_battery_capacity_total = ev.battery_capacity - (total_distance_km * total_energy_consumption / 1000.0)
+remaining_battery_capacity_total = ev.battery_capacity - total_energy_consumption
 
 # Print total results
 print(f'Total distance traveled: {total_distance_km:.2f} kilometers')
 print(f'Total traveling time: {total_duration:.2f} minutes')
 print(f'Final Battery SoC: {ev.soc:.2f}%')
-print(f'Total Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
-print(f'Total Remaining Battery Capacity: {remaining_battery_capacity_total:.2f} kWh')
+print(f'Total Initial Battery Capacity: {ev.battery_capacity:.2f} kilowatt-hours')
+print(f'Total Remaining Battery Capacity: {remaining_battery_capacity_total:.2f} kilowatt-hours')
 
 # Save results to a CSV file
 csv_filename = 'electric_vehicle_results.csv'
