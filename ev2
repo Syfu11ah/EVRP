@@ -36,12 +36,26 @@ class ElectricVehicle:
 
     def drive(self, distance, acceleration, gradient_angle, velocity, duration):
         # Calculate energy consumption and update battery state of charge
-        energy_consumption = (
-            (vehicle_mass * acceleration + 
-             vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
-             vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(math.radians(gradient_angle)) +
-             0.5 * drag_coefficient * frontal_area * 1.225 * velocity**2) * distance
-        ) / 3600  # Convert energy from J to Wh
+        energy_consumption = 0.0
+
+        if acceleration >= 0:
+            # Calculate energy consumption for acceleration
+            energy_consumption += (
+                (vehicle_mass * acceleration +
+                 vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
+                 vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(
+                     math.radians(gradient_angle)) +
+                 0.5 * drag_coefficient * frontal_area * 1.225 * velocity ** 2) * distance
+            ) / 3600  # Convert energy from J to Wh
+        else:
+            # Calculate energy consumption for deceleration
+            energy_consumption += (
+                (vehicle_mass * acceleration -
+                 vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
+                 vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(
+                     math.radians(gradient_angle)) +
+                 0.5 * drag_coefficient * frontal_area * 1.225 * velocity ** 2) * distance
+            ) / 3600  # Convert energy from J to Wh
 
         # Limit energy consumption to remaining battery capacity
         energy_consumption = min(energy_consumption, self.soc * self.battery_capacity / 100.0)
@@ -57,10 +71,11 @@ class ElectricVehicle:
 
         # Additional energy consumption based on driving duration
         duration_energy_consumption = (
-            (vehicle_mass * acceleration + 
+            (vehicle_mass * acceleration +
              vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
-             vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(math.radians(gradient_angle)) +
-             0.5 * drag_coefficient * frontal_area * 1.225 * velocity**2) * duration
+             vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(
+                 math.radians(gradient_angle)) +
+             0.5 * drag_coefficient * frontal_area * 1.225 * velocity ** 2) * duration
         ) / 3600  # Convert energy from J to Wh
 
         # Limit additional energy consumption to remaining battery capacity
