@@ -119,7 +119,7 @@ def save_to_csv(data, filename):
     with open(filename, 'w', newline='') as csvfile:
         fieldnames = ['Trip', 'Origin', 'Destination', 'Distance (km)', 'Realistic Traveling Time (min)',
                       'Energy Consumption (Wh)', 'Battery SoC (%)', 'Initial Battery Capacity (kWh)',
-                      'Remaining Battery Capacity (kWh)']
+                      'Remaining Battery Capacity (kWh)', 'Trip Steps']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(data)
@@ -185,7 +185,8 @@ for i in range(len(waypoints) - 1):
             'Energy Consumption (Wh)': energy_consumption,
             'Battery SoC (%)': ev.soc,
             'Initial Battery Capacity (kWh)': ev.battery_capacity,
-            'Remaining Battery Capacity (kWh)': remaining_battery_capacity
+            'Remaining Battery Capacity (kWh)': remaining_battery_capacity,
+            'Trip Steps': detailed_route
         }
         results_data.append(result_segment)
 
