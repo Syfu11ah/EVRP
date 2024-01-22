@@ -50,7 +50,7 @@ class ElectricVehicle:
         else:
             # Calculate energy consumption for deceleration
             energy_consumption += (
-                (vehicle_mass * acceleration -
+                (vehicle_mass * acceleration +
                  vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
                  vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(
                      math.radians(gradient_angle)) +
@@ -67,7 +67,7 @@ class ElectricVehicle:
 
         # Update state of charge based on the adjusted energy consumption
         self.soc -= (energy_consumption / self.battery_capacity) * 100.0
-        self.soc = max(0.0, self.soc)  # Ensure the state of charge is not below 0
+        self.soc = max(0.0, min(100.0, self.soc))  # Ensure the state of charge is within the range of 0% to 100%
 
         # Additional energy consumption based on driving duration
         duration_energy_consumption = (
@@ -88,7 +88,7 @@ class ElectricVehicle:
 
         # Update state of charge based on the adjusted additional energy consumption
         self.soc -= (duration_energy_consumption / self.battery_capacity) * 100.0
-        self.soc = max(0.0, self.soc)  # Ensure the state of charge is not below 0
+        self.soc = max(0.0, min(100.0, self.soc))  # Ensure the state of charge is within the range of 0% to 100%
 
         return energy_consumption + duration_energy_consumption
 
