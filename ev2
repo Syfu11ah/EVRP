@@ -34,36 +34,18 @@ class ElectricVehicle:
         self.battery_capacity = battery_capacity
         self.soc = initial_soc
 
-    def drive(self, distance, acceleration, gradient_angle, velocity, duration):
-        # Calculate energy consumption and update battery state of charge
-        energy_consumption = 0.0
-
-        if acceleration >= 0:
-            # Calculate energy consumption for acceleration
-            energy_consumption += (
-                (vehicle_mass * acceleration +
-                 vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
-                 vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(
-                     math.radians(gradient_angle)) +
-                 0.5 * drag_coefficient * frontal_area * 1.225 * velocity ** 2) * distance
-            ) / 3600  # Convert energy from J to Wh
-        else:
-            # Calculate energy consumption for deceleration
-            energy_consumption += (
-                (vehicle_mass * acceleration +
-                 vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
-                 vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(
-                     math.radians(gradient_angle)) +
-                 0.5 * drag_coefficient * frontal_area * 1.225 * velocity ** 2) * distance
-            ) / 3600  # Convert energy from J to Wh
+    def calculate_energy_consumption(self, acceleration, gradient_angle, velocity, distance, duration):
+        # Calculate energy consumption for acceleration or deceleration
+        energy_consumption = (
+            (vehicle_mass * acceleration +
+             vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
+             vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(
+                 math.radians(gradient_angle)) +
+             0.5 * drag_coefficient * frontal_area * 1.225 * velocity ** 2) * distance
+        ) / 3600  # Convert energy from J to Wh
 
         # Limit energy consumption to remaining battery capacity
         energy_consumption = min(energy_consumption, self.soc * self.battery_capacity / 100.0)
-
-        # Check if energy consumption is greater than available state of charge
-        if energy_consumption > self.soc * self.battery_capacity / 100.0:
-            # Adjust energy consumption to the available state of charge
-            energy_consumption = self.soc * self.battery_capacity / 100.0
 
         # Update state of charge based on the adjusted energy consumption
         self.soc -= (energy_consumption / self.battery_capacity) * 100.0
@@ -71,8 +53,7 @@ class ElectricVehicle:
 
         # Additional energy consumption based on driving duration
         duration_energy_consumption = (
-            (vehicle_mass * acceleration +
-             vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
+            (vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
              vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(
                  math.radians(gradient_angle)) +
              0.5 * drag_coefficient * frontal_area * 1.225 * velocity ** 2) * duration
@@ -81,16 +62,19 @@ class ElectricVehicle:
         # Limit additional energy consumption to remaining battery capacity
         duration_energy_consumption = min(duration_energy_consumption, self.soc * self.battery_capacity / 100.0)
 
-        # Check if additional energy consumption is greater than available state of charge
-        if duration_energy_consumption > self.soc * self.battery_capacity / 100.0:
-            # Adjust additional energy consumption to the available state of charge
-            duration_energy_consumption = self.soc * self.battery_capacity / 100.0
-
         # Update state of charge based on the adjusted additional energy consumption
         self.soc -= (duration_energy_consumption / self.battery_capacity) * 100.0
         self.soc = max(0.0, min(100.0, self.soc))  # Ensure the state of charge is within the range of 0% to 100%
 
         return (energy_consumption + duration_energy_consumption) / 1000.0  # Convert energy consumption to kWh
+
+    def drive(self, distance, acceleration, gradient_angle, velocity, duration):
+        if acceleration >= 0:
+            # Energy consumption for acceleration
+            return self.calculate_energy_consumption(acceleration, gradient_angle, velocity, distance, duration)
+        else:
+            # Energy consumption for deceleration
+            return self.calculate_energy_consumption(acceleration, gradient_angle, velocity, distance, duration)
 
 def get_distance(point1, point2):
     # Haversine formula to calculate distance between two points on the Earth
