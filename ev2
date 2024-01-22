@@ -2,12 +2,10 @@ import googlemaps
 import time
 import math
 import csv
-import os
 
 # Replace 'YOUR_API_KEY' with your actual Google Maps API key
 API_KEY = 'YOUR_API_KEY'
 gmaps = googlemaps.Client(key=API_KEY)
-
 # Waypoints
 waypoints = [
     (-36.8536098, 174.7664805),
@@ -15,7 +13,6 @@ waypoints = [
     (-36.9409461, 174.9039851),
     (-36.849963, 174.7560774)
 ]
-
 # Vehicle parameters
 vehicle_mass = 1500.0  # Mass of the vehicle in kg
 gravitational_acceleration = 9.81  # Gravitational acceleration in m/s^2
@@ -23,7 +20,6 @@ rolling_resistance_coefficient = 0.01  # Rolling resistance coefficient
 drag_coefficient = 0.3  # Drag coefficient
 frontal_area = 2.0  # Frontal area of the vehicle in m^2
 average_speed = 20.0  # Average speed of the vehicle in m/s (for energy consumption calculation)
-
 # Battery specifications
 battery_capacity = 60.0  # Replace with the actual capacity of the battery in kilowatt-hours
 initial_soc = 80.0  # Replace with the actual initial state of charge in percentage
@@ -34,65 +30,51 @@ class ElectricVehicle:
         self.battery_capacity = battery_capacity
         self.soc = initial_soc
 
-    def calculate_energy_consumption(self, acceleration, gradient_angle, velocity, distance, duration):
-        # Calculate energy consumption for acceleration or deceleration
+    def drive(self, distance, acceleration, gradient_angle, velocity, duration):
+        # Calculate energy consumption and update battery state of charge
         energy_consumption = (
-            (vehicle_mass * acceleration +
+            (vehicle_mass * acceleration + 
              vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
-             vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(
-                 math.radians(gradient_angle)) +
-             0.5 * drag_coefficient * frontal_area * 1.225 * velocity ** 2) * distance
-        ) / 3600  # Convert energy from J to Wh
+             vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(math.radians(gradient_angle)) +
+             0.5 * drag_coefficient * frontal_area * 1.225 * velocity**2) * distance
+        ) / 3600000  # Convert energy from J to kWh
 
-        # Limit energy consumption to remaining battery capacity
-        energy_consumption = min(energy_consumption, self.soc * self.battery_capacity / 100.0)
+        # Determine the sign of acceleration for SOC adjustment
+        sign = 1 if acceleration >= 0 else -1
 
         # Update state of charge based on the adjusted energy consumption
-        self.soc -= (energy_consumption / self.battery_capacity) * 100.0
-        self.soc = max(0.0, min(100.0, self.soc))  # Ensure the state of charge is within the range of 0% to 100%
+        self.soc -= (sign * energy_consumption / self.battery_capacity) * 100.0
+        self.soc = max(0.0, self.soc)  # Ensure the state of charge is not below 0
 
         # Additional energy consumption based on driving duration
         duration_energy_consumption = (
-            (vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
-             vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(
-                 math.radians(gradient_angle)) +
-             0.5 * drag_coefficient * frontal_area * 1.225 * velocity ** 2) * duration
-        ) / 3600  # Convert energy from J to Wh
+            (vehicle_mass * acceleration + 
+             vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
+             vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(math.radians(gradient_angle)) +
+             0.5 * drag_coefficient * frontal_area * 1.225 * velocity**2) * duration
+        ) / 3600000  # Convert energy from J to kWh
 
         # Limit additional energy consumption to remaining battery capacity
         duration_energy_consumption = min(duration_energy_consumption, self.soc * self.battery_capacity / 100.0)
 
         # Update state of charge based on the adjusted additional energy consumption
-        self.soc -= (duration_energy_consumption / self.battery_capacity) * 100.0
-        self.soc = max(0.0, min(100.0, self.soc))  # Ensure the state of charge is within the range of 0% to 100%
+        self.soc -= (sign * duration_energy_consumption / self.battery_capacity) * 100.0
+        self.soc = max(0.0, self.soc)  # Ensure the state of charge is not below 0
 
-        return (energy_consumption + duration_energy_consumption) / 1000.0  # Convert energy consumption to kWh
-
-    def drive(self, distance, acceleration, gradient_angle, velocity, duration):
-        if acceleration >= 0:
-            # Energy consumption for acceleration
-            return self.calculate_energy_consumption(acceleration, gradient_angle, velocity, distance, duration)
-        else:
-            # Energy consumption for deceleration
-            return self.calculate_energy_consumption(acceleration, gradient_angle, velocity, distance, duration)
+        return energy_consumption + duration_energy_consumption
 
 def get_distance(point1, point2):
     # Haversine formula to calculate distance between two points on the Earth
     lat1, lon1 = math.radians(point1[0]), math.radians(point1[1])
     lat2, lon2 = math.radians(point2[0]), math.radians(point2[1])
-
     dlat = lat2 - lat1
     dlon = lon2 - lon1
-
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
     # Radius of the Earth in kilometers (mean value)
     radius_earth = 6371.0
-
     # Calculate the distance
     distance = radius_earth * c
-
     return distance
 
 def get_elevation(location):
@@ -129,7 +111,6 @@ def save_trip_steps_to_csv(trip_number, trip_steps, filename):
         fieldnames = ['Step', 'Instruction', 'Start Location', 'End Location', 'Distance (km)', 'Duration (min)', 'Energy Consumption (kWh)']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
-
         for step_number, step in enumerate(trip_steps):
             writer.writerow({
                 'Step': step_number + 1,
@@ -138,7 +119,7 @@ def save_trip_steps_to_csv(trip_number, trip_steps, filename):
                 'End Location': step['end_location'],
                 'Distance (km)': step['distance']['value'] / 1000.0,  # Convert distance to kilometers
                 'Duration (min)': step['duration']['value'] / 60.0,  # Convert duration to minutes
-                'Energy Consumption (kWh)': ev.drive(step['distance']['value'] / 1000.0, acceleration, gradient_angle, velocity, step['duration']['value'] / 60.0)
+                'Energy Consumption (kWh)': ev.drive(step['distance']['value'] / 1000.0, acceleration, gradient_angle, velocity, step['duration']['value'] / 60.0) / 1000.0
             })
 
 # Initialize the electric vehicle
@@ -190,7 +171,7 @@ for i in range(len(waypoints) - 1):
         current_location = end_point
 
         # Calculate remaining battery capacity
-        remaining_battery_capacity = ev.battery_capacity - total_energy_consumption  # Energy consumption is now in kWh
+        remaining_battery_capacity = ev.battery_capacity - (total_energy_consumption / 1000.0)  # Convert energy consumption to kilowatt-hours
 
         # Save results for the current trip segment
         result_segment = {
@@ -199,7 +180,7 @@ for i in range(len(waypoints) - 1):
             'Destination': end_point,
             'Distance (km)': distance,
             'Realistic Traveling Time (min)': duration,
-            'Energy Consumption (kWh)': energy_consumption,
+            'Energy Consumption (kWh)': energy_consumption / 1000.0,
             'Battery SoC (%)': ev.soc,
             'Initial Battery Capacity (kWh)': ev.battery_capacity,
             'Remaining Battery Capacity (kWh)': remaining_battery_capacity
@@ -212,10 +193,10 @@ for i in range(len(waypoints) - 1):
         print(f'Destination: {end_point}')
         print(f'Distance: {distance:.2f} kilometers')  # Distance is now directly calculated
         print(f'Realistic Traveling Time: {duration:.2f} minutes')
-        print(f'Energy consumption: {energy_consumption:.2f} kilowatt-hours')
+        print(f'Energy consumption: {energy_consumption:.2f} watt-hours')
         print(f'Battery SoC: {ev.soc:.2f}%')
-        print(f'Initial Battery Capacity: {ev.battery_capacity:.2f} kilowatt-hours')
-        print(f'Remaining Battery Capacity: {remaining_battery_capacity:.2f} kilowatt-hours\n')
+        print(f'Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
+        print(f'Remaining Battery Capacity: {remaining_battery_capacity:.2f} kWh\n')
 
         # Save trip steps to a separate CSV file
         trip_steps_filename = f'trip_{i + 1}_steps.csv'
@@ -236,14 +217,14 @@ for i in range(len(waypoints) - 1):
 total_distance_km = total_distance
 
 # Calculate remaining battery capacity after all trips
-remaining_battery_capacity_total = ev.battery_capacity - total_energy_consumption
+remaining_battery_capacity_total = ev.battery_capacity - (total_energy_consumption / 1000.0)
 
 # Print total results
 print(f'Total distance traveled: {total_distance_km:.2f} kilometers')
 print(f'Total traveling time: {total_duration:.2f} minutes')
 print(f'Final Battery SoC: {ev.soc:.2f}%')
-print(f'Total Initial Battery Capacity: {ev.battery_capacity:.2f} kilowatt-hours')
-print(f'Total Remaining Battery Capacity: {remaining_battery_capacity_total:.2f} kilowatt-hours')
+print(f'Total Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
+print(f'Total Remaining Battery Capacity: {remaining_battery_capacity_total:.2f} kWh')
 
 # Save results to a CSV file
 csv_filename = 'electric_vehicle_results.csv'
