@@ -41,7 +41,7 @@ class ElectricVehicle:
              vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
              vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(math.radians(gradient_angle)) +
              0.5 * drag_coefficient * frontal_area * 1.225 * velocity**2) * distance
-        ) / 3600  # Convert energy from J to Wh
+        ) / 3600000  # Convert energy from J to kWh
 
         # Limit energy consumption to remaining battery capacity
         energy_consumption = min(energy_consumption, self.soc * self.battery_capacity / 100.0)
@@ -61,7 +61,7 @@ class ElectricVehicle:
              vehicle_mass * gravitational_acceleration * math.sin(math.radians(gradient_angle)) +
              vehicle_mass * gravitational_acceleration * rolling_resistance_coefficient * math.cos(math.radians(gradient_angle)) +
              0.5 * drag_coefficient * frontal_area * 1.225 * velocity**2) * duration
-        ) / 3600  # Convert energy from J to Wh
+        ) / 3600000  # Convert energy from J to kWh
 
         # Limit additional energy consumption to remaining battery capacity
         duration_energy_consumption = min(duration_energy_consumption, self.soc * self.battery_capacity / 100.0)
@@ -118,7 +118,7 @@ def get_detailed_route(start_point, end_point):
 def save_to_csv(data, filename):
     with open(filename, 'w', newline='') as csvfile:
         fieldnames = ['Trip', 'Origin', 'Destination', 'Distance (km)', 'Realistic Traveling Time (min)',
-                      'Energy Consumption (Wh)', 'Battery SoC (%)', 'Initial Battery Capacity (kWh)',
+                      'Energy Consumption (kWh)', 'Battery SoC (%)', 'Initial Battery Capacity (kWh)',
                       'Remaining Battery Capacity (kWh)']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -127,7 +127,7 @@ def save_to_csv(data, filename):
 # Function to save trip steps to a CSV file
 def save_trip_steps_to_csv(trip_number, trip_steps, filename):
     with open(filename, 'w', newline='') as csvfile:
-        fieldnames = ['Step', 'Instruction', 'Start Location', 'End Location', 'Distance (km)', 'Duration (min)', 'Energy Consumption (Wh)']
+        fieldnames = ['Step', 'Instruction', 'Start Location', 'End Location', 'Distance (km)', 'Duration (min)', 'Energy Consumption (kWh)']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
@@ -139,7 +139,7 @@ def save_trip_steps_to_csv(trip_number, trip_steps, filename):
                 'End Location': step['end_location'],
                 'Distance (km)': step['distance']['value'] / 1000.0,  # Convert distance to kilometers
                 'Duration (min)': step['duration']['value'] / 60.0,  # Convert duration to minutes
-                'Energy Consumption (Wh)': ev.drive(step['distance']['value'] / 1000.0, acceleration, gradient_angle, velocity, step['duration']['value'] / 60.0)
+                'Energy Consumption (kWh)': ev.drive(step['distance']['value'] / 1000.0, acceleration, gradient_angle, velocity, step['duration']['value'] / 60.0) / 1000.0
             })
 
 # Initialize the electric vehicle
@@ -200,7 +200,7 @@ for i in range(len(waypoints) - 1):
             'Destination': end_point,
             'Distance (km)': distance,
             'Realistic Traveling Time (min)': duration,
-            'Energy Consumption (Wh)': energy_consumption,
+            'Energy Consumption (kWh)': energy_consumption / 1000.0,
             'Battery SoC (%)': ev.soc,
             'Initial Battery Capacity (kWh)': ev.battery_capacity,
             'Remaining Battery Capacity (kWh)': remaining_battery_capacity
