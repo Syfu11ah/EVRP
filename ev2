@@ -1,6 +1,8 @@
 import googlemaps
 import time
 import math
+import csv
+import os
 
 # Replace 'YOUR_API_KEY' with your actual Google Maps API key
 API_KEY = 'YOUR_API_KEY'
@@ -112,6 +114,16 @@ def get_detailed_route(start_point, end_point):
     )
     return directions_result
 
+# Function to save results to a CSV file
+def save_to_csv(data, filename):
+    with open(filename, 'w', newline='') as csvfile:
+        fieldnames = ['Trip', 'Origin', 'Destination', 'Distance (km)', 'Realistic Traveling Time (min)',
+                      'Energy Consumption (Wh)', 'Battery SoC (%)', 'Initial Battery Capacity (kWh)',
+                      'Remaining Battery Capacity (kWh)']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+
 # Initialize the electric vehicle
 ev = ElectricVehicle(battery_capacity, initial_soc)
 
@@ -120,6 +132,7 @@ current_location = waypoints[0]
 total_distance = 0.0
 total_duration = 0.0
 total_energy_consumption = 0.0
+results_data = []
 
 # Iterate through waypoints
 for i in range(len(waypoints) - 1):
@@ -162,7 +175,21 @@ for i in range(len(waypoints) - 1):
         # Calculate remaining battery capacity
         remaining_battery_capacity = ev.battery_capacity - (total_energy_consumption / 1000.0)  # Convert energy consumption to kilowatt-hours
 
-        # Print results for the current trip segment
+        # Save results for the current trip segment
+        result_segment = {
+            'Trip': i + 1,
+            'Origin': start_point,
+            'Destination': end_point,
+            'Distance (km)': distance,
+            'Realistic Traveling Time (min)': duration,
+            'Energy Consumption (Wh)': energy_consumption,
+            'Battery SoC (%)': ev.soc,
+            'Initial Battery Capacity (kWh)': ev.battery_capacity,
+            'Remaining Battery Capacity (kWh)': remaining_battery_capacity
+        }
+        results_data.append(result_segment)
+
+        # Get and print detailed route information
         print(f'Trip {i + 1} Segment:')
         print(f'Origin: {start_point}')
         print(f'Destination: {end_point}')
@@ -210,3 +237,8 @@ print(f'Total traveling time: {total_duration:.2f} minutes')
 print(f'Final Battery SoC: {ev.soc:.2f}%')
 print(f'Total Initial Battery Capacity: {ev.battery_capacity:.2f} kWh')
 print(f'Total Remaining Battery Capacity: {remaining_battery_capacity_total:.2f} kWh')
+
+# Save results to a CSV file
+csv_filename = 'electric_vehicle_results.csv'
+save_to_csv(results_data, csv_filename)
+print(f'Results saved to {csv_filename}')
